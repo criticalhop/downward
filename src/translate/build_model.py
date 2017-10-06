@@ -7,6 +7,7 @@ import sys
 import itertools
 
 import pddl
+from subdominization.priority_queue import *
 import timers
 from functools import reduce
 
@@ -278,12 +279,15 @@ class MatchGenerator:
             self.next.dump(indent + "    ")
 
 class Queue:
-    def __init__(self, atoms):
-        self.queue = atoms
+    def __init__(self, atoms, action_q):
+        self.closed = atoms
+        self.queue = list(atoms)
         self.queue_pos = 0
         self.enqueued = set([(atom.predicate,) + tuple(atom.args)
                              for atom in self.queue])
         self.num_pushes = len(atoms)
+        self.action_queue = action_q
+        self.popped_actions = 0
     def __bool__(self):
         return self.queue_pos < len(self.queue)
     __nonzero__ = __bool__
@@ -292,11 +296,29 @@ class Queue:
         eff_tuple = (predicate,) + tuple(args)
         if eff_tuple not in self.enqueued:
             self.enqueued.add(eff_tuple)
-            self.queue.append(pddl.Atom(predicate, list(args)))
+            atom = pddl.Atom(predicate, list(args))
+            if isinstance(predicate, pddl.Action):
+                self.action_queue.push(atom)
+            else:
+                self.queue.append(atom)
+                self.closed.append(atom)
+    def has_actions(self):
+        return bool(self.action_queue)
+    def get_number_popped_actions(self):
+        return self.popped_actions
     def pop(self):
-        result = self.queue[self.queue_pos]
-        self.queue_pos += 1
-        return result
+        if (self.queue_pos < len(self.queue)):
+            result = self.queue[self.queue_pos]
+            self.queue_pos += 1
+            if (self.queue_pos == len(self.queue)):
+                self.queue_pos = 0
+                self.queue = []
+            return result
+        else:
+            action = self.action_queue.pop()
+            self.closed.append(action)
+            self.popped_actions += 1
+            return action
 
 def compute_model(prog):
     with timers.timing("Preparing model"):
@@ -304,28 +326,37 @@ def compute_model(prog):
         unifier = Unifier(rules)
         # unifier.dump()
         fact_atoms = sorted(fact.atom for fact in prog.facts)
-        queue = Queue(fact_atoms)
+        queue = Queue(fact_atoms, get_action_queue_from_options())
 
     print("Generated %d rules." % len(rules))
     with timers.timing("Computing model"):
         relevant_atoms = 0
         auxiliary_atoms = 0
-        while queue:
+        terminate = False
+        while queue or (queue.has_actions() and not terminate):
             next_atom = queue.pop()
             pred = next_atom.predicate
             if isinstance(pred, str) and "$" in pred:
                 auxiliary_atoms += 1
             else:
                 relevant_atoms += 1
+                if (pred == "@goal-reachable"): # TODO arbitrary termination conditions goes here
+                    print("TERMINATE")
+                    terminate = True
+#                 if (not isinstance(next_atom, normalize.GoalConditionProxy)):# TODO does not work
+#                     print(type(next_atom))
+#                     print(next_atom.__class__)
+#                     print(next_atom.predicate)
             matches = unifier.unify(next_atom)
             for rule, cond_index in matches:
                 rule.update_index(next_atom, cond_index)
                 rule.fire(next_atom, cond_index, queue.push)
     print("%d relevant atoms" % relevant_atoms)
     print("%d auxiliary atoms" % auxiliary_atoms)
-    print("%d final queue length" % len(queue.queue))
+    print("%d actions instantiated" % queue.get_number_popped_actions())
+    print("%d final queue length" % len(queue.closed))
     print("%d total queue pushes" % queue.num_pushes)
-    return queue.queue
+    return queue.closed
 
 if __name__ == "__main__":
     import pddl_parser

@@ -51,6 +51,9 @@ def parse_args():
     argparser.add_argument(
         "--dump-task", action="store_true",
         help="dump human-readable SAS+ representation of the task")
+    argparser.add_argument(
+        "--grounding-action-queue-ordering", default="fifo", type=str,
+        help="type of queue that is used in compute_model to order the actions, default: FIFOQueue")
     return argparser.parse_args()
 
 
