@@ -51,7 +51,7 @@ class RandomQueue(PriorityQueue):
     def pop(self):
         return self.queue.pop()[0]
     
-def get_queue_from_options():
+def get_action_queue_from_options():
     name = options.grounding_action_queue_ordering.lower()
     if (name == "fifo"):
         return FIFOQueue()
