@@ -4,6 +4,7 @@
 import options
 
 from _collections import deque
+import heapq
 
 from operator import itemgetter
 
@@ -51,6 +52,17 @@ class RandomQueue(PriorityQueue):
     def pop(self):
         return self.queue.pop()[0]
     
+class RandomHeapQueue(PriorityQueue):
+    def __init__(self):
+        self.queue = []
+    def __bool__(self):
+        return len(self.queue) > 0
+    __nonzero__ = __bool__
+    def push(self, atom):
+        heapq.heappush(self.queue, (randint(0, 10), atom))
+    def pop(self):
+        return heapq.heappop(self.queue)[1]
+    
 def get_action_queue_from_options():
     name = options.grounding_action_queue_ordering.lower()
     if (name == "fifo"):
@@ -59,6 +71,8 @@ def get_action_queue_from_options():
         return FIFOQueue()
     elif (name == "random"):
         return RandomQueue()
+    elif (name == "randomheap"):
+        return RandomHeapQueue()
     else:
         print("INPUT ERROR: unknown queue type: " + name)
         exit(1)
