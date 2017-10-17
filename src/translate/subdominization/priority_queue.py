@@ -68,7 +68,7 @@ def get_action_queue_from_options():
     if (name == "fifo"):
         return FIFOQueue()
     elif (name == "lifo"):
-        return FIFOQueue()
+        return LIFOQueue()
     elif (name == "random"):
         return RandomQueue()
     elif (name == "randomheap"):
