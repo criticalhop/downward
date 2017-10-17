@@ -31,14 +31,14 @@ class FIFOQueue(PriorityQueue):
     
 class LIFOQueue(PriorityQueue):
     def __init__(self):
-        self.queue = deque()
+        self.queue = []
     def __bool__(self):
         return len(self.queue) > 0
     __nonzero__ = __bool__
     def push(self, atom):
         self.queue.append(atom)
     def pop(self):
-        return self.queue.popleft()
+        return self.queue.pop()
     
 class RandomQueue(PriorityQueue):
     def __init__(self):
