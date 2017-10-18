@@ -22,6 +22,8 @@ class FIFOQueue(PriorityQueue):
     def __bool__(self):
         return self.queue_pos < len(self.queue)
     __nonzero__ = __bool__
+    def print_info(self):
+        print("Using FIFO priority queue for actions.")
     def push(self, atom):
         self.queue.append(atom)
     def pop(self):
@@ -35,6 +37,8 @@ class LIFOQueue(PriorityQueue):
     def __bool__(self):
         return len(self.queue) > 0
     __nonzero__ = __bool__
+    def print_info(self):
+        print("Using LIFO priority queue for actions.")
     def push(self, atom):
         self.queue.append(atom)
     def pop(self):
@@ -46,6 +50,8 @@ class RandomQueue(PriorityQueue):
     def __bool__(self):
         return len(self.queue) > 0
     __nonzero__ = __bool__
+    def print_info(self):
+        print("Using random priority queue for actions.")
     def push(self, atom):
         self.queue.append((atom, randint(0, 10)))
         self.queue = sorted(self.queue, key=itemgetter(1))
@@ -58,6 +64,8 @@ class RandomHeapQueue(PriorityQueue):
     def __bool__(self):
         return len(self.queue) > 0
     __nonzero__ = __bool__
+    def print_info(self):
+        print("Using randomheap priority queue for actions.")
     def push(self, atom):
         heapq.heappush(self.queue, (randint(0, 10), atom))
     def pop(self):

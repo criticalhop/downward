@@ -279,14 +279,14 @@ class MatchGenerator:
             self.next.dump(indent + "    ")
 
 class Queue:
-    def __init__(self, atoms, action_q):
+    def __init__(self, atoms):
         self.closed = atoms
         self.queue = list(atoms)
         self.queue_pos = 0
         self.enqueued = set([(atom.predicate,) + tuple(atom.args)
                              for atom in self.queue])
         self.num_pushes = len(atoms)
-        self.action_queue = action_q
+        self.action_queue = get_action_queue_from_options()
         self.popped_actions = 0
     def __bool__(self):
         return self.queue_pos < len(self.queue)
@@ -306,6 +306,8 @@ class Queue:
         return bool(self.action_queue)
     def get_number_popped_actions(self):
         return self.popped_actions
+    def print_info(self):
+        self.action_queue.print_info()
     def pop(self):
         if (self.queue_pos < len(self.queue)):
             result = self.queue[self.queue_pos]
@@ -326,7 +328,10 @@ def compute_model(prog):
         unifier = Unifier(rules)
         # unifier.dump()
         fact_atoms = sorted(fact.atom for fact in prog.facts)
-        queue = Queue(fact_atoms, get_action_queue_from_options())
+        queue = Queue(fact_atoms)
+        
+    queue.print_info()
+    print("Grounding stopped if goal is relaxed reachable.") # TODO this is currently hardcoded, make it an option
 
     print("Generated %d rules." % len(rules))
     with timers.timing("Computing model"):
@@ -341,7 +346,6 @@ def compute_model(prog):
             else:
                 relevant_atoms += 1
                 if (pred == "@goal-reachable"): # TODO arbitrary termination conditions goes here
-                    print("TERMINATE")
                     terminate = True
 #                 if (not isinstance(next_atom, normalize.GoalConditionProxy)):# TODO does not work
 #                     print(type(next_atom))
