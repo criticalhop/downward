@@ -79,27 +79,34 @@ if __name__ == "__main__":
     print("Normalizing...")
     normalize.normalize(task)
 
+
+    #if options.store_rules:
+         #frules = open(options.store_rules, 'w')
+         
     for a in task.actions:
-        print ("Generate candidate rules for action %s" % a.name)
+          print ("Generate candidate rules for action %s" % a.name)
 
-        rules = get_equality_rules (a)
-    
-        for p in task.predicates:
-            for binding in all_combinations(a.parameters, p.arguments):
-                arguments = ["_" for x in p.arguments]
-                for x in binding:
-                    arguments[x[1]] = a.parameters[x[0]].name
+          rules = get_equality_rules (a)
+          
+          for p in task.predicates:
+               for binding in all_combinations(a.parameters, p.arguments):
+                    arguments = ["_" for x in p.arguments]
+                    for x in binding:
+                         arguments[x[1]] = a.parameters[x[0]].name
 
-                rules.append(Rule(a, "ini:{}({})".format(p.name, ", ".join(arguments))))
-                rules.append(Rule(a, "goal:{}({})".format(p.name, ", ".join(arguments))))
+                    rules.append(Rule(a, "ini:{}({})".format(p.name, ", ".join(arguments))))
+                    rules.append(Rule(a, "goal:{}({})".format(p.name, ", ".join(arguments))))
 
-        frules = open('rules_{}.txt'.format(a.name), 'w')
-        frules.write("\n".join(map(str, rules)))
-        frules.close()
-        print (len(rules))
-        print()
 
-        
+          if options.store_rules:
+               options.store_rules.write("\n".join(map(str, rules)) + "\n")
+          else:
+               print("\n".join(map(str, rules)))
+
+
+          print (len(rules))
+          print()
+
 
         
 
