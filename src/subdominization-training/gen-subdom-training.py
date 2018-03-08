@@ -61,8 +61,21 @@ class RuleEval:
                 arguments, compliant_values = self.evaluate_inigoal_rule (rule, task.init)                        
             elif rule_type == "goal":
                 arguments, compliant_values = self.evaluate_inigoal_rule (rule, task.goal.parts)
+                
             elif rule_type == "equal":
-                arguments = ()
+                arguments = tuple(rule[1:rule.find(')')].split(", "))
+                compliant_values = set()
+                accepted_types = set()
+
+                action_schema = next(filter(lambda a : a.name == self.action_schema, task.actions), None)
+                argument_types = set([p.type_name for p in action_schema.parameters if p.name in arguments])
+                
+                # TODO : Support super types in equality rules
+                compliant_values = set([tuple ([o.name for a in arguments])
+                                        for o in task.objects if o.type_name in argument_types])
+
+                #print (self.text, arguments, compliant_values)
+                                             
             else:
                  print("Error: unknown rule ", rule_type, rule)
                  exit()
@@ -78,7 +91,6 @@ class RuleEval:
                 self.constraints [arguments] = compliant_values
                 
         #print (self.text, self.constraints)
-
     def evaluate(self, action):
         arguments = action.name[:-1].split(" ")[1:]
         for c in self.constraints:
@@ -95,11 +107,10 @@ class RulesEvaluator:
     def __init__(self, rule_text, task):
         self.rules = defaultdict(list)
         for l in rule_text:
-            if "ini:" in l or "goal:" in l:
-                re = RuleEval(l, task)                
-                self.rules[re.action_schema].append(re)
+            re = RuleEval(l, task)
+            self.rules[re.action_schema].append(re)
 
-                
+
     def eliminate_rules(self, rules_text):
         for a in self.rules:
             self.rules[a] = [rule for rule in self.rules[a] if rule.text not in rules_text]
@@ -150,11 +161,14 @@ if __name__ == "__main__":
 
     i = 0
     for task_run in sorted(os.listdir(options.runs_folder)):
-        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")) or i > 10:
-            continue
-
+        if i > 20:
+            break
         i += 1
         
+        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")):
+            continue
+        
+
         domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
         task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
 
@@ -176,7 +190,10 @@ if __name__ == "__main__":
 
         relevant_rules.update(re.get_relevant_rules())
 
-
+        #print(relevant_rules)
+    
+    print ("Relevant rules: ", len(relevant_rules))
+    
     output_file = open('{}/relevant_rules'.format(options.store_training_data), 'w')
     output_file.write("\n".join(sorted(list(relevant_rules))))
     output_file.close()
@@ -214,7 +231,7 @@ if __name__ == "__main__":
 
         relevant_rules.update(re.get_relevant_rules())
 
-        print (len(relevant_rules))
+        
             
     for schema in training_lines:
         output_file = open('{}/training_data_{}.csv'.format(options.store_training_data, schema), 'w')
