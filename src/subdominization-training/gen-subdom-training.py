@@ -4,9 +4,19 @@ from __future__ import print_function
 
 from collections import defaultdict
 
+import lisp_parser
+
+try:
+    # Python 3.x
+    from builtins import open as file_open
+except ImportError:
+    # Python 2.x
+    from codecs import open as file_open
+
+import parsing_functions
+import instantiate
 
 class RuleEval:
-
     def evaluate_inigoal_rule(self, rule, fact_list):
         compliant_values = set()
             
@@ -82,28 +92,27 @@ class RuleEval:
         return 1
     
 class RulesEvaluator:
-    def __init__(self, file_reader, task):
+    def __init__(self, rule_text, task):
         self.rules = defaultdict(list)
-        for l in file_reader.readlines():
+        for l in rule_text:
             if "ini:" in l or "goal:" in l:
                 re = RuleEval(l, task)                
                 self.rules[re.action_schema].append(re)
 
+                
+    def eliminate_rules(self, rules_text):
+        for a in self.rules:
+            self.rules[a] = [rule for rule in self.rules[a] if rule.text not in rules_text]
+            
     def evaluate(self, action):
         name = action.name.split(" ")[0][1:]
         return [rule.evaluate(action) for rule in  self.rules[name]]
 
-    def get_only_0_rules(self):
-
-        return [rule.text for (schema, rules)  in self.rules.items() for rule in rules if rule.evaluation_result_count_1 == 0]
-
-    def get_only_1_rules(self):
-        return [rule.text for (schema, rules)  in self.rules.items() for rule in rules if rule.evaluation_result_count_0 == 0]
+    def get_relevant_rules(self):
+        return [rule.text for (schema, rules)  in self.rules.items() for rule in rules if rule.evaluation_result_count_0 > 0 and rule.evaluation_result_count_1 > 0]
 
     def get_all_rules (self):
         return [rule.text for (schema, rules)  in self.rules.items() for rule in rules]
-
-
 
 
 
@@ -126,49 +135,90 @@ def parse_pddl_file(type, filename):
 
 
 if __name__ == "__main__":
-
     import argparse
     import os
     
     argparser = argparse.ArgumentParser()
     argparser.add_argument("runs_folder", help="path to task pddl file")
     argparser.add_argument("training_rules", type=argparse.FileType('r'), help="File that contains the rules used to generate training data by gen-subdominization-training")
-    argparser.add_argument("store_training_data", help="File to store the rules used to generate training data by gen-subdominization-training")    
+    argparser.add_argument("store_training_data", help="File to store the training data by gen-subdominization-training")    
 
     options = argparser.parse_args()
 
-    for task_run in os.listdir(options.runs_folder):
-        if os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")):
-            domain_file = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
-            problem_file = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
+    training_lines = defaultdict(list)
+    relevant_rules = set()
 
-            domain_pddl = parse_pddl_file("domain", domain_filename)
-            task_pddl = parse_pddl_file("task", task_filename)
+    i = 0
+    for task_run in sorted(os.listdir(options.runs_folder)):
+        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")) or i > 10:
+            continue
 
-            task = parsing_functions.parse_task(domain_pddl, task_pddl)
-    exit()
-    
-    # task = pddl_parser.open(domain_file, problem_file)    
-    # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
-
-    
-    # plan = [x.replace('\n', '') for x in options.training_plan]
-    # re = RulesEvaluator(options.training_rules, task)
-
-    # training_lines = defaultdict(list)
-    
-    # for action in actions:
-    #     is_in_plan = 1 if action.name in plan else 0
-    #     eval = re.evaluate(action)
-    #     #print( ", ".join(map (str, [action.name] + eval + [is_in_plan])) )
+        i += 1
         
-    #     schema = action.name.split(' ')[0][1:]
-    #     training_lines [schema].append(", ".join(map (str, eval + [is_in_plan])))
+        domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
+        task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
 
-    # if options.store_training_data:
-    #     for schema in training_lines:
-    #         output_file = open('{}/training_data_{}.csv'.format(options.store_training_data, schema), 'a')
-    #         output_file.write("\n".join(training_lines[schema]))
-    #         output_file.close()
+        domain_pddl = parse_pddl_file("domain", domain_filename)
+        task_pddl = parse_pddl_file("task", task_filename)
 
-    # print ("Only 0/1 rules: ", len(re.get_only_0_rules()), len(re.get_only_1_rules()), len(re.get_all_rules()))
+        task = parsing_functions.parse_task(domain_pddl, task_pddl)
+    
+        re = RulesEvaluator(options.training_rules.readlines(), task)
+        re.eliminate_rules(relevant_rules)
+
+        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")):
+            continue
+        
+        relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+
+        for action in actions:
+            eval = re.evaluate(action)                
+
+        relevant_rules.update(re.get_relevant_rules())
+
+
+    output_file = open('{}/relevant_rules'.format(options.store_training_data), 'w')
+    output_file.write("\n".join(sorted(list(relevant_rules))))
+    output_file.close()
+
+
+    for task_run in sorted(os.listdir(options.runs_folder)):        
+        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")):
+            continue
+
+        print ("Processing ", task_run)
+
+        domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
+        task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
+        plan_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")
+
+        domain_pddl = parse_pddl_file("domain", domain_filename)
+        task_pddl = parse_pddl_file("task", task_filename)
+
+        task = parsing_functions.parse_task(domain_pddl, task_pddl)
+    
+        re = RulesEvaluator(relevant_rules, task)
+
+        relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+
+        with open(plan_filename) as plan_file:
+            plan = plan_file.readlines()
+                                    
+            for action in actions:
+                is_in_plan = 1 if action.name in plan else 0
+                eval = re.evaluate(action)
+                #print( ", ".join(map (str, [action.name] + eval + [is_in_plan])) )
+                
+                schema = action.name.split(' ')[0][1:]
+                training_lines [schema].append(", ".join(map (str, eval + [is_in_plan])))
+
+        relevant_rules.update(re.get_relevant_rules())
+
+        print (len(relevant_rules))
+            
+    for schema in training_lines:
+        output_file = open('{}/training_data_{}.csv'.format(options.store_training_data, schema), 'w')
+        output_file.write("\n".join(training_lines[schema]))
+        output_file.close()
+
+    print ("Only 0/1 rules: ", len(re.get_only_0_rules()), len(re.get_only_1_rules()), len(re.get_all_rules()))

@@ -57,13 +57,6 @@ def parse_args():
 
     argparser.add_argument("--store-rules", type=argparse.FileType('w'), help="File to store the rules used to generate training data by gen-subdominization-training")
 
-    argparser.add_argument("--training-rules", type=argparse.FileType('r'), help="File that contains the rules used to generate training data by gen-subdominization-training")
-
-    argparser.add_argument("--training-plan", type=argparse.FileType('r'), help="File that contains the plan used to generate training data by gen-subdominization-training")
-
-    
-    argparser.add_argument("--store-training-data", help="File to store the rules used to generate training data by gen-subdominization-training")
-
     return argparser.parse_args()
 
 

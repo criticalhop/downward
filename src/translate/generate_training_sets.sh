@@ -10,6 +10,6 @@ for a in `ls "$RUNS_FOLDER"`; do
     RUN_FOLDER="$RUNS_FOLDER/$a";
     if [ -e "$RUN_FOLDER/sas_plan" ]
     then
-	./gen-subdom-training.py "$RUN_FOLDER"/domain.pddl "$RUN_FOLDER"/problem.pddl --training-rules "$RULES_FILE" --training-plan "$RUN_FOLDER/sas_plan" --store-training-data "$TARGET_DIR";
+	echo ./gen-subdom-training.py "$RUN_FOLDER"/domain.pddl "$RUN_FOLDER"/problem.pddl --training-rules "$RULES_FILE" --training-plan "$RUN_FOLDER/sas_plan" --store-training-data "$TARGET_DIR";
     fi
 done
