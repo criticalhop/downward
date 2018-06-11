@@ -53,9 +53,13 @@ def parse_args():
         help="dump human-readable SAS+ representation of the task")
     argparser.add_argument(
         "--grounding-action-queue-ordering", default="fifo", type=str,
-        help="type of queue that is used in compute_model to order the actions, default: FIFOQueue")
-
-    argparser.add_argument("--store-rules", type=argparse.FileType('w'), help="File to store the rules used to generate training data by gen-subdominization-training")
+        help="type of queue that is used in compute_model to order the actions (default: %(default)d)")
+    argparser.add_argument(
+        "--trained-model-folder", type=str, required=False,
+        help="The folder that should contain the trained model and relevant files if 'trained' is used as queue ordering")
+    argparser.add_argument(
+        "--num-actions-after-goal-reachable", default=0, type=int,
+        help="number of actions to instantiate after goal is relaxed reachable (default: %(default)ds)")
 
     return argparser.parse_args()
 

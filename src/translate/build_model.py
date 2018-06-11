@@ -279,14 +279,14 @@ class MatchGenerator:
             self.next.dump(indent + "    ")
 
 class Queue:
-    def __init__(self, atoms):
+    def __init__(self, atoms, task):
         self.closed = atoms
         self.queue = list(atoms)
         self.queue_pos = 0
         self.enqueued = set([(atom.predicate,) + tuple(atom.args)
                              for atom in self.queue])
         self.num_pushes = len(atoms)
-        self.action_queue = get_action_queue_from_options()
+        self.action_queue = get_action_queue_from_options(task)
         self.popped_actions = 0
     def __bool__(self):
         return self.queue_pos < len(self.queue)
@@ -308,6 +308,8 @@ class Queue:
         return self.popped_actions
     def print_info(self):
         self.action_queue.print_info()
+    def print_stats(self):
+        self.action_queue.print_stats()
     def pop(self):
         if (self.queue_pos < len(self.queue)):
             result = self.queue[self.queue_pos]
@@ -322,13 +324,13 @@ class Queue:
             self.popped_actions += 1
             return action
 
-def compute_model(prog):
+def compute_model(prog, task = None):
     with timers.timing("Preparing model"):
         rules = convert_rules(prog)
         unifier = Unifier(rules)
         # unifier.dump()
         fact_atoms = sorted(fact.atom for fact in prog.facts)
-        queue = Queue(fact_atoms)
+        queue = Queue(fact_atoms, task)
         
     queue.print_info()
     print("Grounding stopped if goal is relaxed reachable.") # TODO this is currently hardcoded, make it an option
@@ -337,24 +339,29 @@ def compute_model(prog):
     with timers.timing("Computing model"):
         relevant_atoms = 0
         auxiliary_atoms = 0
+        goal_reached = False
         terminate = False
+        num_actions_after_goal_reachable = options.num_actions_after_goal_reachable
         while queue or (queue.has_actions() and not terminate):
             next_atom = queue.pop()
+            if (goal_reached and isinstance(next_atom.predicate, pddl.Action)):
+                num_actions_after_goal_reachable -= 1
+                if (num_actions_after_goal_reachable <= 0):
+                    terminate = True                
             pred = next_atom.predicate
             if isinstance(pred, str) and "$" in pred:
                 auxiliary_atoms += 1
             else:
                 relevant_atoms += 1
-                if (pred == "@goal-reachable"): # TODO arbitrary termination conditions goes here
-                    terminate = True
-#                 if (not isinstance(next_atom, normalize.GoalConditionProxy)):# TODO does not work
-#                     print(type(next_atom))
-#                     print(next_atom.__class__)
-#                     print(next_atom.predicate)
+                if (isinstance(pred, str) and pred == "@goal-reachable"):
+                    goal_reached = True
+                    if (num_actions_after_goal_reachable == 0): # TODO arbitrary termination conditions goes here
+                        terminate = True
             matches = unifier.unify(next_atom)
             for rule, cond_index in matches:
                 rule.update_index(next_atom, cond_index)
                 rule.fire(next_atom, cond_index, queue.push)
+    queue.print_stats()
     print("%d relevant atoms" % relevant_atoms)
     print("%d auxiliary atoms" % auxiliary_atoms)
     print("%d actions instantiated" % queue.get_number_popped_actions())

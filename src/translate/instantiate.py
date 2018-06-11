@@ -73,7 +73,7 @@ def instantiate(task, model):
 
 def explore(task):
     prog = pddl_to_prolog.translate(task)
-    model = build_model.compute_model(prog)
+    model = build_model.compute_model(prog, task)
     with timers.timing("Completing instantiation"):
         return instantiate(task, model)
 
