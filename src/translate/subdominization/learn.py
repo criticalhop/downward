@@ -77,9 +77,9 @@ class LearnRules():
         
         if (fileTraining !='') :
             self.isBalanced=  'balanced' if isBalanced else None
-            print("balanced? ", self.isBalanced)
+
             dataset= pd.read_csv(fileTraining, header=None)
-            #print dataset.shape
+
             # separate in features an target
             X, y = dataset.iloc[:,:-1], list(dataset.iloc[:, -1])
     
