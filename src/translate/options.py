@@ -55,11 +55,11 @@ def parse_args():
         "--grounding-action-queue-ordering", default="fifo", type=str,
         help="type of queue that is used in compute_model to order the actions (default: %(default)d)")
     argparser.add_argument(
-        "--trained-model-folder", type=str, required=False,
+        "--trained-model-folder", type=str,
         help="The folder that should contain the trained model and relevant files if 'trained' is used as queue ordering")
     argparser.add_argument(
-        "--num-actions-after-goal-reachable", default=0, type=int,
-        help="number of actions to instantiate after goal is relaxed reachable (default: %(default)ds)")
+        "--termination-condition", type=str, default=["goal-relaxed-reachable"], nargs="+", # at least one argument must be given
+        help="the termination condition, which may be followed by additional arguments used by the respective condition")
 
     return argparser.parse_args()
 

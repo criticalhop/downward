@@ -7,7 +7,8 @@ import sys
 import itertools
 
 import pddl
-from subdominization.priority_queue import *
+import subdominization.priority_queue as pq
+import subdominization.termination_condition as tc
 import timers
 from functools import reduce
 
@@ -286,7 +287,7 @@ class Queue:
         self.enqueued = set([(atom.predicate,) + tuple(atom.args)
                              for atom in self.queue])
         self.num_pushes = len(atoms)
-        self.action_queue = get_action_queue_from_options(task)
+        self.action_queue = pq.get_action_queue_from_options(task)
         self.popped_actions = 0
     def __bool__(self):
         return self.queue_pos < len(self.queue)
@@ -332,31 +333,24 @@ def compute_model(prog, task = None):
         fact_atoms = sorted(fact.atom for fact in prog.facts)
         queue = Queue(fact_atoms, task)
         
-    queue.print_info()
-    print("Grounding stopped if goal is relaxed reachable.") # TODO this is currently hardcoded, make it an option
-
     print("Generated %d rules." % len(rules))
+        
+    queue.print_info()
+    termination_condition = tc.get_termination_condition_from_options()
+    termination_condition.print_info()
+    
     with timers.timing("Computing model"):
         relevant_atoms = 0
         auxiliary_atoms = 0
         goal_reached = False
-        terminate = False
-        num_actions_after_goal_reachable = options.num_actions_after_goal_reachable
-        while queue or (queue.has_actions() and not terminate):
-            next_atom = queue.pop()
-            if (goal_reached and isinstance(next_atom.predicate, pddl.Action)):
-                num_actions_after_goal_reachable -= 1
-                if (num_actions_after_goal_reachable <= 0):
-                    terminate = True                
+        while queue or (queue.has_actions() and not termination_condition.terminate()):
+            next_atom = queue.pop()  
             pred = next_atom.predicate
             if isinstance(pred, str) and "$" in pred:
                 auxiliary_atoms += 1
             else:
                 relevant_atoms += 1
-                if (isinstance(pred, str) and pred == "@goal-reachable"):
-                    goal_reached = True
-                    if (num_actions_after_goal_reachable == 0): # TODO arbitrary termination conditions goes here
-                        terminate = True
+                termination_condition.notify_atom(next_atom)
             matches = unifier.unify(next_atom)
             for rule, cond_index in matches:
                 rule.update_index(next_atom, cond_index)
