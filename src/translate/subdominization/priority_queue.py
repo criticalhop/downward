@@ -17,7 +17,7 @@ import timers
 
 class PriorityQueue():
     def __init__(self):
-        sys.exit("Error: should not instantiate PriorityQueue directly")
+        fail
     def print_stats(self):
         print("no statistics available")
     
