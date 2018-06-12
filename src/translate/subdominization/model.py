@@ -20,18 +20,22 @@ class TrainedModel():
         if (not os.path.isdir(modelFolder)):
             sys.exit("Error: given --trained-model-folder is not a folder: " + modelFolder)
         self.model = defaultdict()
+        found_rules = False
+        found_model = False
         for file in os.listdir(modelFolder):
             if (os.path.isfile(os.path.join(modelFolder, file))):
                 if (file.endswith(".model")):
                     with open(os.path.join(modelFolder, file), "rb") as modelFile:
+                        found_model = True
                         self.model[file[:-6]] = pickle.load(modelFile)
                 elif (file == "relevant_rules"):
                     rules = []
                     with open(os.path.join(modelFolder, file), "r") as rulesFile:
+                        found_rules = True
                         self.ruleEvaluator = RulesEvaluator(rulesFile.readlines(), task)
-        if (not self.ruleEvaluator):
-            sys.exit("Error: no relevant_rules file inthen " + modelFolder)
-        if (not self.model):
+        if (not found_rules):
+            sys.exit("Error: no relevant_rules file in " + modelFolder)
+        if (not found_model):
             sys.exit("Error: no *.model files in " + modelFolder)
         self.no_rule_schemas = set()
         self.estimates_per_schema = defaultdict()
