@@ -15,6 +15,14 @@ class TerminationCondition():
     def notify_atom(self, atom):
         pass
     
+class DefaultCondition(TerminationCondition):
+    def print_info(self):
+        print("using default termination condition, i.e. grounding all actions.")
+    def terminate(self):
+        return False
+    def notify_atom(self, atom):
+        pass
+    
 class GoalRelaxedReachableCondition(TerminationCondition):
     def __init__(self):
         self.goal_reached = False
@@ -45,8 +53,8 @@ class GoalRelaxedReachablePlusPercentageCondition(TerminationCondition):
     def __init__(self, percentage_additional_actions):
         self.goal_reached = False
         self.percentage_additional_actions = int(percentage_additional_actions)
-        if (self.percentage_additional_actions < 0 or self.percentage_additional_actions > 100):
-           sys.exit("ERROR: percentage of additional actions must be 0<=x<=100") 
+        if (self.percentage_additional_actions < 0):
+           sys.exit("ERROR: percentage of additional actions must be >=0") 
         self.number_grounded_actions = 0
     def print_info(self):
         print("Grounding stopped if goal is relaxed reachable + {percentage}% additional actions.".format(percentage = self.percentage_additional_actions))
@@ -65,7 +73,9 @@ class GoalRelaxedReachablePlusPercentageCondition(TerminationCondition):
 def get_termination_condition_from_options():
     args = options.termination_condition
     if (len(args) == 1):
-        if (args[0] == "goal-relaxed-reachable"):
+        if (args[0] == "default"):
+            return DefaultCondition()
+        elif (args[0] == "goal-relaxed-reachable"):
             return GoalRelaxedReachableCondition()
         else:
             sys.exit("Error: unknown termination condition: " + args[0])
