@@ -19,6 +19,7 @@ from sklearn.svm import SVC
 from pylab import rcParams
 from sklearn import preprocessing
 from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn import metrics 
 from sklearn.metrics import classification_report

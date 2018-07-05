@@ -39,6 +39,7 @@ class TrainedModel():
             sys.exit("Error: no *.model files in " + modelFolder)
         self.no_rule_schemas = set()
         self.estimates_per_schema = defaultdict()
+        self.values_off_for_schema = set()
         
     def get_estimate(self, action):
 #         print(action.predicate.name)
@@ -50,8 +51,12 @@ class TrainedModel():
             return randint(0, 100) / 100 # TODO use the ratio of occurrence of this schema in plans?
         
         # the returned list has only one entry, of which the second entry is the probability that the action is in the plan
-        estimate = self.model[action.predicate.name].model.predict_proba([self.ruleEvaluator.evaluate(action)])[0][1] 
+        estimate = self.model[action.predicate.name].model.predict([self.ruleEvaluator.evaluate(action)])[0]#[1] 
 #         print(action.predicate.name, estimate)
+
+        if (estimate < 0 or estimate > 1): # in case the estimate is really off
+            self.values_off_for_schema.add(action.predicate.name)
+            return randint(0, 100) / 100 # TODO use the ratio of occurrence of this schema in plans?
         
         if (not action.predicate.name in self.estimates_per_schema):
             self.estimates_per_schema[action.predicate.name] = []
@@ -65,6 +70,8 @@ class TrainedModel():
             print(key, sum(estimates) / len(estimates), std(estimates))
         for schema in self.no_rule_schemas:
             print("no relevant rule for action schema", schema)
+        for schema in self.values_off_for_schema:
+            print("bad estimate(s) for action schema", schema)
 
         
 
