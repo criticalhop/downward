@@ -118,7 +118,7 @@ class TrainedQueue(PriorityQueue):
     def push(self, action):
         heapq.heappush(self.queue, (self.model.get_estimate(action), action))
     def pop(self):
-        return heapq.heappop(self.queue)
+        return heapq.heappop(self.queue)[1]
     
 class SchemaRoundRobinQueue(PriorityQueue):
     def __init__(self):
