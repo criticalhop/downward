@@ -62,7 +62,7 @@ class TrainedModel():
             self.estimates_per_schema[action.predicate.name] = []
         self.estimates_per_schema[action.predicate.name].append(estimate)
                
-        return estimate
+        return 1 - estimate
     
     def print_stats(self):
         print("schema \t AVG \t STDDEV")
