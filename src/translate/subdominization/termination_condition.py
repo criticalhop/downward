@@ -17,7 +17,7 @@ class TerminationCondition():
     
 class DefaultCondition(TerminationCondition):
     def print_info(self):
-        print("using default termination condition, i.e. grounding all actions.")
+        print("Using default termination condition, i.e. grounding all actions.")
     def terminate(self):
         return False
     def notify_atom(self, atom):
@@ -46,6 +46,20 @@ class GoalRelaxedReachablePlusNumberCondition(TerminationCondition):
         if (self.goal_reached):
             if (isinstance(atom.predicate, pddl.Action)):
                 self.num_additional_actions -= 1
+        elif (isinstance(atom.predicate, str) and atom.predicate == "@goal-reachable"):
+            self.goal_reached = True
+            
+class GoalRelaxedReachableMinNumberCondition(TerminationCondition):
+    def __init__(self, min_num_actions):
+        self.goal_reached = False
+        self.min_num_actions = int(min_num_actions)
+    def print_info(self):
+        print("Grounding stopped if goal is relaxed reachable and at least + %d actions have been grounded." % self.min_num_actions)
+    def terminate(self):
+        return self.goal_reached and self.min_num_actions <= 0
+    def notify_atom(self, atom):
+        if (isinstance(atom.predicate, pddl.Action)):
+            self.min_num_actions -= 1
         elif (isinstance(atom.predicate, str) and atom.predicate == "@goal-reachable"):
             self.goal_reached = True
 
@@ -83,6 +97,8 @@ def get_termination_condition_from_options():
         if (args[0] == "goal-relaxed-reachable"):
             if (args[1] == "number"):
                 return GoalRelaxedReachablePlusNumberCondition(args[2])
+            if (args[1] == "min-number"):
+                return GoalRelaxedReachableMinNumberCondition(args[2])
             elif (args[1] == "percentage"):
                 return GoalRelaxedReachablePlusPercentageCondition(args[2])
             else:
