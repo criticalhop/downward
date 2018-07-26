@@ -54,7 +54,7 @@ class GoalRelaxedReachableMinNumberCondition(TerminationCondition):
         self.goal_reached = False
         self.min_num_actions = int(min_num_actions)
     def print_info(self):
-        print("Grounding stopped if goal is relaxed reachable and at least + %d actions have been grounded." % self.min_num_actions)
+        print("Grounding stopped if goal is relaxed reachable and at least %d actions have been grounded." % self.min_num_actions)
     def terminate(self):
         return self.goal_reached and self.min_num_actions <= 0
     def notify_atom(self, atom):
