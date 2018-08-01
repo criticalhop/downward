@@ -6,13 +6,14 @@ from . import predicates
 
 class Task(object):
     def __init__(self, domain_name, task_name, requirements,
-                 types, objects, predicates, functions, init, goal,
+                 types, objects, constants, predicates, functions, init, goal,
                  actions, axioms, use_metric):
         self.domain_name = domain_name
         self.task_name = task_name
         self.requirements = requirements
         self.types = types
         self.objects = objects
+        self.constants = constants
         self.predicates = predicates
         self.functions = functions
         self.init = init

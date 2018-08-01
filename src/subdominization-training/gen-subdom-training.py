@@ -66,8 +66,7 @@ class RuleEval:
                 arguments = tuple(rule[1:rule.find(')')].split(", "))
                 compliant_values = set()
                 accepted_types = set()
-
-                action_schema = next(filter(lambda a : a.name == self.action_schema, task.actions), None)
+                action_schema = list(filter(lambda a : a.name == self.action_schema, task.actions))[0]
                 argument_types = set([p.type_name for p in action_schema.parameters if p.name in arguments])
                 
                 # TODO : Support super types in equality rules
@@ -83,12 +82,21 @@ class RuleEval:
             if len(arguments) == 0:
                 continue
 
-            arguments = tuple(map(lambda x : action_arguments.index(x),  arguments))
+            print (arguments)
+
+            arguments = tuple(map(lambda x : action_arguments.index(x) if x in action_arguments else None,  arguments))
+
+            print (arguments)
             
             if arguments in self.constraints:
                 self.constraints [arguments] = self.constraints [arguments] & compliant_values
             else:
                 self.constraints [arguments] = compliant_values
+
+            
+            print (len(self.constraints))
+            if len(self.constraints) > 1:
+                exit()
                 
         #print (self.text, self.constraints)
     def evaluate(self, action):
@@ -154,20 +162,22 @@ if __name__ == "__main__":
     argparser.add_argument("training_rules", type=argparse.FileType('r'), help="File that contains the rules used to generate training data by gen-subdominization-training")
     argparser.add_argument("store_training_data", help="File to store the training data by gen-subdominization-training")    
 
+    argparser.add_argument("--opfile", default="sas_plan", help="File to store the training data by gen-subdominization-training")    
+
     options = argparser.parse_args()
 
     training_lines = defaultdict(list)
     relevant_rules = set()
 
+    operators_filename = options.opfile
+
     i = 0
     for task_run in sorted(os.listdir(options.runs_folder)):
-        if i > 20:
-            break
-        i += 1
-        
-        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")):
+        # if i > 20:
+        #     break
+        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, operators_filename)):
             continue
-        
+        i += 1
 
         domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
         task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
@@ -179,14 +189,11 @@ if __name__ == "__main__":
     
         re = RulesEvaluator(options.training_rules.readlines(), task)
         re.eliminate_rules(relevant_rules)
-
-        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")):
-            continue
         
         relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
 
         for action in actions:
-            eval = re.evaluate(action)                
+            evaluation = re.evaluate(action)                
 
         relevant_rules.update(re.get_relevant_rules())
 
@@ -200,14 +207,14 @@ if __name__ == "__main__":
 
 
     for task_run in sorted(os.listdir(options.runs_folder)):        
-        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")):
+        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, operators_filename)):
             continue
 
         print ("Processing ", task_run)
 
         domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
         task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
-        plan_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "sas_plan")
+        plan_filename = '{}/{}/{}'.format(options.runs_folder, task_run, operators_filename)
 
         domain_pddl = parse_pddl_file("domain", domain_filename)
         task_pddl = parse_pddl_file("task", task_filename)
@@ -219,23 +226,24 @@ if __name__ == "__main__":
         relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
 
         with open(plan_filename) as plan_file:
-            plan = plan_file.readlines()
-                                    
+            plan = set(map (lambda x : x.replace("\n", ""), plan_file.readlines()))
+
             for action in actions:
-                is_in_plan = 1 if action.name in plan else 0
+                is_in_plan = 1 if action.name in plan or action.name.replace("(", "").replace(")", "") in plan else 0
+                #print (action.name, is_in_plan)
                 eval = re.evaluate(action)
-                #print( ", ".join(map (str, [action.name] + eval + [is_in_plan])) )
+                #print( ",".join(map (str, [action.name] + eval + [is_in_plan])) )
                 
                 schema = action.name.split(' ')[0][1:]
-                training_lines [schema].append(", ".join(map (str, eval + [is_in_plan])))
+                training_lines [schema].append(",".join(map (str, eval + [is_in_plan])))
 
         relevant_rules.update(re.get_relevant_rules())
 
         
             
     for schema in training_lines:
-        output_file = open('{}/training_data_{}.csv'.format(options.store_training_data, schema), 'w')
+        output_file = open('{}/{}.csv'.format(options.store_training_data, schema), 'w')
         output_file.write("\n".join(training_lines[schema]))
         output_file.close()
 
-    print ("Only 0/1 rules: ", len(re.get_only_0_rules()), len(re.get_only_1_rules()), len(re.get_all_rules()))
+    #print ("Only 0/1 rules: ", len(re.get_only_0_rules()), len(re.get_only_1_rules()), len(re.get_all_rules()))
