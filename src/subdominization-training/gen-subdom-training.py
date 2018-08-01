@@ -18,20 +18,26 @@ import instantiate
 
 class RuleEval:
     def evaluate_inigoal_rule(self, rule, fact_list):
+        def eval_constants(fact, constants):
+            for (i, val) in constants:
+                if fact.args[i] != val:
+                    return False
+            return True
         compliant_values = set()
             
         predicate_name, arguments  = rule.split("(")
         arguments = arguments.replace(")", "").replace("\n", "").replace(".", "").replace(" ", "").split(",")
-        valid_arguments = tuple(set([a for a in arguments if a != "_"]))
+        valid_arguments = tuple(set([a for a in arguments if a.startswith("?")]))
+
+        constants = [(i, val) for (i, val) in enumerate(arguments) if val != "_" and not val.startswith("?")]
         positions_argument = {}
         
         for a in valid_arguments:
             positions_argument[a] = [i for (i, v) in enumerate(arguments) if v == a]
 
         arguments = valid_arguments
-
         for fact in fact_list:
-            if fact.predicate == predicate_name:
+            if fact.predicate == predicate_name and eval_constants(fact, constants): 
                 values = []
                 for a in arguments:
                     if len(set([fact.args[p] for p in positions_argument[a]])) > 1:
@@ -40,7 +46,7 @@ class RuleEval:
 
                 if len(values) == len(arguments):
                     compliant_values.add(tuple(values))
-
+                    
         return arguments, compliant_values
 
     def __init__(self, rule_text, task):
@@ -82,21 +88,21 @@ class RuleEval:
             if len(arguments) == 0:
                 continue
 
-            print (arguments)
+            # print (arguments)
 
-            arguments = tuple(map(lambda x : action_arguments.index(x) if x in action_arguments else None,  arguments))
+            arguments = tuple(map(lambda x : action_arguments.index(x),  arguments))
 
-            print (arguments)
-            
+            # print (arguments)
+             
             if arguments in self.constraints:
                 self.constraints [arguments] = self.constraints [arguments] & compliant_values
             else:
                 self.constraints [arguments] = compliant_values
 
             
-            print (len(self.constraints))
-            if len(self.constraints) > 1:
-                exit()
+            # print (len(self.constraints))
+            # if len(self.constraints) > 1:
+            #     exit()
                 
         #print (self.text, self.constraints)
     def evaluate(self, action):
@@ -106,9 +112,11 @@ class RuleEval:
             if not values in self.constraints[c]:
                 # print (action.name, "not valid according to", self.text)
                 self.evaluation_result_count_0 += 1
+                #print ("Evaluate", self.text, action, 0)
                 return 0
         #print (action.name, "valid according to", self.text)
         self.evaluation_result_count_1 += 1
+        #print ("Evaluate", self.text, action, 1)
         return 1
     
 class RulesEvaluator:
@@ -118,7 +126,7 @@ class RulesEvaluator:
             re = RuleEval(l, task)
             self.rules[re.action_schema].append(re)
 
-
+               
     def eliminate_rules(self, rules_text):
         for a in self.rules:
             self.rules[a] = [rule for rule in self.rules[a] if rule.text not in rules_text]
@@ -200,9 +208,10 @@ if __name__ == "__main__":
         #print(relevant_rules)
     
     print ("Relevant rules: ", len(relevant_rules))
-    
+
+    relevant_rules = sorted(list(relevant_rules))
     output_file = open('{}/relevant_rules'.format(options.store_training_data), 'w')
-    output_file.write("\n".join(sorted(list(relevant_rules))))
+    output_file.write("\n".join(relevant_rules))
     output_file.close()
 
 
@@ -237,7 +246,6 @@ if __name__ == "__main__":
                 schema = action.name.split(' ')[0][1:]
                 training_lines [schema].append(",".join(map (str, eval + [is_in_plan])))
 
-        relevant_rules.update(re.get_relevant_rules())
 
         
             
