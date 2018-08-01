@@ -81,13 +81,14 @@ if __name__ == "__main__":
           rules = get_equality_rules (a)
 
           for p in task.predicates:
-               matches = [(i, j) for (i, p1) in enumerate(p.arguments) for (j, p2) in enumerate(a.parameters) if p1.type_name == p2.type_name]
-               all_matches_subsets = chain.from_iterable(combinations(matches,n) for n in range(len(matches)+1))
-               for arg_subset in [arg_subset for arg_subset in all_matches_subsets if len(arg_subset) > 0 and len(set(map(lambda x : x[1], arg_subset))) == len(arg_subset)]:
-                    valid_arguments = [["_"] + [x.name for x in task.constants if x.type_name == arg.type_name] for arg in p.arguments]
-                    for (i, j) in arg_subset:
-                         valid_arguments[i] = [a.parameters[j].name]
+               valid_arguments_parameters = [["_"] + [x.name for x in a.parameters if x.type_name == arg.type_name] for arg in p.arguments]
+               valid_arguments_constants = [["_"] + [x.name for x in task.constants if x.type_name == arg.type_name] for arg in p.arguments]
+               for combination in itertools.product(*valid_arguments_parameters):
+                    if set(combination) == set("_"):
+                         continue
 
+
+                    valid_arguments = [[x] if x != "_" else valid_arguments_constants[i] for (i, x) in enumerate (combination)]
                     for combination in itertools.product(*valid_arguments):
                          rules.append(Rule(a, "ini:{}({})".format(p.name, ", ".join(combination))))
                          rules.append(Rule(a, "goal:{}({})".format(p.name, ", ".join(combination))))
