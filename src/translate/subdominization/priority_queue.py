@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import options
-from subdominization.model import TrainedModel
 
 from _collections import deque, defaultdict
 import heapq
@@ -19,6 +18,8 @@ import sys
 class PriorityQueue():
     def __init__(self):
         fail
+    def get_final_queue(self):
+        pass
     def print_stats(self):
         print("no statistics available")
     
@@ -29,6 +30,8 @@ class FIFOQueue(PriorityQueue):
     def __bool__(self):
         return self.queue_pos < len(self.queue)
     __nonzero__ = __bool__
+    def get_final_queue(self):
+        return self.queue[:self.queue_pos]
     def print_info(self):
         print("Using FIFO priority queue for actions.")
     def push(self, action):
@@ -41,50 +44,49 @@ class FIFOQueue(PriorityQueue):
 class LIFOQueue(PriorityQueue):
     def __init__(self):
         self.queue = []
+        self.closed = []
     def __bool__(self):
         return len(self.queue) > 0
     __nonzero__ = __bool__
+    def get_final_queue(self):
+        return self.closed
     def print_info(self):
         print("Using LIFO priority queue for actions.")
     def push(self, action):
         self.queue.append(action)
     def pop(self):
-        return self.queue.pop()
-    
-class RandomQueue(PriorityQueue):
-    def __init__(self):
-        self.queue = []
-    def __bool__(self):
-        return len(self.queue) > 0
-    __nonzero__ = __bool__
-    def print_info(self):
-        print("Using random priority queue for actions.")
-    def push(self, atom):
-        self.queue.append((atom, randint(0, 10)))
-        self.queue = sorted(self.queue, key=itemgetter(1))
-    def pop(self):
-        return self.queue.pop()[0]
+        result = self.queue.pop()
+        self.closed.append(result) 
+        return result
     
 class RandomHeapQueue(PriorityQueue):
     def __init__(self):
         self.queue = []
+        self.closed = []
     def __bool__(self):
         return len(self.queue) > 0
     __nonzero__ = __bool__
+    def get_final_queue(self):
+        return self.closed
     def print_info(self):
         print("Using randomheap priority queue for actions.")
     def push(self, action):
         heapq.heappush(self.queue, (randint(0, 10), action))
     def pop(self):
-        return heapq.heappop(self.queue)[1]
+        result = heapq.heappop(self.queue)[1]
+        self.closed.append(result)
+        return result
 
 class HikingTestQueue(PriorityQueue):
     def __init__(self):
         self.queue = []
+        self.closed = []
         self.num_grounded = 0
     def __bool__(self):
         return len(self.queue) > 0
     __nonzero__ = __bool__
+    def get_final_queue(self):
+        return self.closed
     def print_info(self):
         print("Using Hiking test priority queue for actions.")
     def push(self, action):
@@ -95,30 +97,49 @@ class HikingTestQueue(PriorityQueue):
                 prio = 1
         heapq.heappush(self.queue, (prio, action))
     def pop(self):
-        return heapq.heappop(self.queue)[1]
+        result = heapq.heappop(self.queue)[1]
+        self.closed.append(result)
+        return result
     
 class TrainedQueue(PriorityQueue):
     def __init__(self, task):
+        from subdominization.model import TrainedModel
         if (not options.trained_model_folder):
             sys.exit("Error: need trained model to use this queue. Please specify using --trained-mode-folder")
         if (not task):
             sys.exit("Error: no task given")
         self.queue = []
+        self.closed = []
+#         self.sorted_closed = []
+#         self.pop_count = 0
         timer = timers.Timer()
         self.model = TrainedModel(options.trained_model_folder, task)
         self.loading_time = str(timer)
     def __bool__(self):
         return len(self.queue) > 0
     __nonzero__ = __bool__
+    def get_final_queue(self):
+        return self.closed
     def print_info(self):
         print("Using heap priority queue with a trained model for actions.")
         print("Loaded trained model from", options.trained_model_folder, self.loading_time)
     def print_stats(self):
         self.model.print_stats()
+#         while(len(self.sorted_closed) > 0):
+#             item = heapq.heappop(self.sorted_closed)
+#             print(round(1 - item[0], 2), item[1], "(" + str(item[2].predicate.name), end=" ")
+#             print(item[2].args[0], end="")
+#             for arg in item[2].args[1:]:
+#                 print(" " + arg, end="")
+#             print(")")
     def push(self, action):
-        heapq.heappush(self.queue, (self.model.get_estimate(action), action))
+        heapq.heappush(self.queue, (1 - self.model.get_estimate(action), action))
     def pop(self):
-        return heapq.heappop(self.queue)[1]
+        result = heapq.heappop(self.queue)
+        self.closed.append(result[1])
+#         heapq.heappush(self.sorted_closed, (result[0], self.pop_count, result[1]))
+#         self.pop_count += 1
+        return result[1]
     
 class SchemaRoundRobinQueue(PriorityQueue):
     def __init__(self):
@@ -132,6 +153,11 @@ class SchemaRoundRobinQueue(PriorityQueue):
                 return True
         return False
     __nonzero__ = __bool__
+    def get_final_queue(self):
+        result = []
+        for queue in self.queues:
+            result += queue.get_final_queue()
+        return result
     def print_info(self):
         print("Using SchemaRoundRobin priority queue for actions.")
     def print_stats(self):
@@ -180,18 +206,20 @@ class NoveltyFIFOQueue(PriorityQueue):
     def __init__(self):
         self.novel_action_queue = []
         self.novel_queue_pos = 0
-        self.non_novel_action_queue = []
-        self.non_novel_queue_pos = 0
+        self.closed_novel_actions = []
+        self.non_novel_action_queue = FIFOQueue()
         self.num_novel_actions_grounded = 0
         self.num_non_novel_actions_grounded = 0
         self.novelty = NoveltyEvaluator()
     def __bool__(self):
         if (self.novel_queue_pos < len(self.novel_action_queue)):
             return True
-        if (self.non_novel_queue_pos < len(self.non_novel_action_queue)):
+        if (self.non_novel_action_queue):
             return True
         return False
     __nonzero__ = __bool__
+    def get_final_queue(self):
+        return self.non_novel_action_queue.get_final_queue() + self.closed_novel_actions
     def print_info(self):
         print("Using novelty FIFO priority queue for actions.")
     def print_stats(self):
@@ -201,7 +229,7 @@ class NoveltyFIFOQueue(PriorityQueue):
         if (self.novelty.calculate_novelty(action) == 0):
             self.novel_action_queue.append(action)
         else:
-            self.non_novel_action_queue.append(action)
+            self.non_novel_action_queue.push(action)
     def pop(self):
         while (self.novel_queue_pos < len(self.novel_action_queue)):
             result = self.novel_action_queue[self.novel_queue_pos]
@@ -209,13 +237,13 @@ class NoveltyFIFOQueue(PriorityQueue):
             if (self.novelty.calculate_novelty(result) == 0):
                 self.novelty.update_novelty(result)
                 self.num_novel_actions_grounded += 1
+                self.closed_novel_actions.append(result)
                 return result
             else:
-                self.non_novel_action_queue.append(result)
+                self.non_novel_action_queue.push(result)
         # removed all actions from novel queue
         assert(self.novel_queue_pos >= len(self.novel_action_queue))
-        result = self.non_novel_action_queue[self.non_novel_queue_pos]
-        self.non_novel_queue_pos += 1
+        result = self.non_novel_action_queue.pop()
         self.num_non_novel_actions_grounded += 1
         return result
     
@@ -226,12 +254,15 @@ class RoundRobinNoveltyQueue(PriorityQueue):
         self.current = 0
         self.queues = []
         self.num_grounded_actions = []
+        self.closed = []
     def __bool__(self):
         for queue in self.queues:
             if (queue):
                 return True
         return False
     __nonzero__ = __bool__
+    def get_final_queue(self):
+        return self.closed
     def print_info(self):
         print("Using round-robin novelty priority queue for actions.")
     def print_stats(self):
@@ -258,6 +289,7 @@ class RoundRobinNoveltyQueue(PriorityQueue):
                         heapq.heappush(self.queues[self.current], (novelty_new, action))
                     else:
                         self.novelty.update_novelty(action)
+                        self.closed.append(action)
                         return action
     
 def get_action_queue_from_options(task = None):
@@ -267,8 +299,6 @@ def get_action_queue_from_options(task = None):
     elif (name == "lifo"):
         return LIFOQueue()
     elif (name == "random"):
-        return RandomQueue()
-    elif (name == "randomheap"):
         return RandomHeapQueue()
     elif (name == "hiking"):
         return HikingTestQueue()

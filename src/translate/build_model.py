@@ -281,8 +281,7 @@ class MatchGenerator:
 
 class Queue:
     def __init__(self, atoms, task):
-        self.closed = atoms
-        self.queue = list(atoms)
+        self.queue = atoms
         self.queue_pos = 0
         self.enqueued = set([(atom.predicate,) + tuple(atom.args)
                              for atom in self.queue])
@@ -302,7 +301,6 @@ class Queue:
                 self.action_queue.push(atom)
             else:
                 self.queue.append(atom)
-                self.closed.append(atom)
     def has_actions(self):
         return bool(self.action_queue)
     def get_number_popped_actions(self):
@@ -311,17 +309,15 @@ class Queue:
         self.action_queue.print_info()
     def print_stats(self):
         self.action_queue.print_stats()
+    def get_final_queue(self):
+        return self.queue + self.action_queue.get_final_queue()
     def pop(self):
         if (self.queue_pos < len(self.queue)):
             result = self.queue[self.queue_pos]
             self.queue_pos += 1
-            if (self.queue_pos == len(self.queue)):
-                self.queue_pos = 0
-                self.queue = []
             return result
         else:
             action = self.action_queue.pop()
-            self.closed.append(action)
             self.popped_actions += 1
             return action
 
@@ -359,9 +355,9 @@ def compute_model(prog, task = None):
     print("%d relevant atoms" % relevant_atoms)
     print("%d auxiliary atoms" % auxiliary_atoms)
     print("%d actions instantiated" % queue.get_number_popped_actions())
-    print("%d final queue length" % len(queue.closed))
+    print("%d final queue length" % len(queue.enqueued))
     print("%d total queue pushes" % queue.num_pushes)
-    return queue.closed
+    return queue.get_final_queue()
 
 if __name__ == "__main__":
     import pddl_parser

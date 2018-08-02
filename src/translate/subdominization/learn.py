@@ -1,14 +1,19 @@
 #!/usr/bin/python
 
-import sys
-import os
 import numpy as np
 import pandas as pd
 
-from sklearn.pipeline import make_pipeline
-import matplotlib.pyplot as plt
+import pickle
+
 import sklearn
+
 from sklearn import tree
+from sklearn import preprocessing
+from sklearn import metrics
+from sklearn import datasets
+from sklearn import metrics
+
+from sklearn.pipeline import make_pipeline
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.naive_bayes import GaussianNB
 from sklearn.base import BaseEstimator
@@ -16,42 +21,24 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 from sklearn.svm import SVC
 
-from pylab import rcParams
-from sklearn import preprocessing
 from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
-from sklearn import metrics 
 from sklearn.metrics import classification_report
 
 from sklearn.linear_model import LogisticRegression
-from sklearn import datasets
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegressionCV
 
 from sklearn.model_selection import KFold
 from sklearn.ensemble import RandomForestClassifier
 
-from sklearn import metrics
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
-
-import pickle
-
-from random import *
 
 
 
 class LearnRules():
-    model=BaseEstimator
-    X_test=pd.DataFrame()
-    y_test=pd.DataFrame()
-    isBalanced=''
-    tesSize=0.05
-    njobs=4
-    modelType=''
-
-    #X_train, y_train are not defined, to not save with pickle
     
     def __init__(self, isBalanced=False, modelType='LRCV', fileTraining ='', njobs=-1, testSize=0.05):
         '''

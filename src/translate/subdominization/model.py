@@ -42,27 +42,32 @@ class TrainedModel():
         self.values_off_for_schema = set()
         
     def get_estimate(self, action):
-#         print(action.predicate.name)
-        
+        # returns the probability that the given action is part of a plan
+
         if (not action.predicate.name in self.model):
             if (not action.predicate.name in self.no_rule_schemas):
                 self.no_rule_schemas.add(action.predicate.name)
-#             print(action.predicate.name, randint(0, 100) / 100)
+            # TODO return None and handle in queue
             return randint(0, 100) / 100 # TODO use the ratio of occurrence of this schema in plans?
         
-        # the returned list has only one entry, of which the second entry is the probability that the action is in the plan
-        estimate = self.model[action.predicate.name].model.predict([self.ruleEvaluator.evaluate(action)])[0]#[1] 
-#         print(action.predicate.name, estimate)
+        if (self.model[action.predicate.name].is_classifier):
+            # the returned list has only one entry, of which the second entry is the probability that the action is in the plan
+            estimate = self.model[action.predicate.name].model.predict_proba([self.ruleEvaluator.evaluate(action)])[0][1]
+        else:
+            estimate = self.model[action.predicate.name].model.predict([self.ruleEvaluator.evaluate(action)])[0]#[1]
 
-        if (estimate < 0 or estimate > 1): # in case the estimate is really off
+        if (estimate < 0 or estimate > 1): # in case the estimate is off
             self.values_off_for_schema.add(action.predicate.name)
-            return randint(0, 100) / 100 # TODO use the ratio of occurrence of this schema in plans?
+            if (estimate < 0):
+                return 0
+            else:
+                return 1
         
         if (not action.predicate.name in self.estimates_per_schema):
             self.estimates_per_schema[action.predicate.name] = []
         self.estimates_per_schema[action.predicate.name].append(estimate)
                
-        return 1 - estimate
+        return estimate
     
     def print_stats(self):
         print("schema \t AVG \t STDDEV")
