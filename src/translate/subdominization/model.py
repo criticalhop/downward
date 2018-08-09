@@ -1,15 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sys
+from sys import exit 
 import pickle
 import os.path
-from _collections import defaultdict
 
 from subdominization.rule_evaluator import RulesEvaluator
 from subdominization.learn import LearnRules
-
-from random import randint
 
 from numpy import std
 
@@ -18,8 +15,8 @@ from numpy import std
 class TrainedModel():
     def __init__(self, modelFolder, task):
         if (not os.path.isdir(modelFolder)):
-            sys.exit("Error: given --trained-model-folder is not a folder: " + modelFolder)
-        self.model = defaultdict()
+            exit("Error: given --trained-model-folder is not a folder: " + modelFolder)
+        self.model = {}
         found_rules = False
         found_model = False
         for file in os.listdir(modelFolder):
@@ -34,21 +31,19 @@ class TrainedModel():
                         found_rules = True
                         self.ruleEvaluator = RulesEvaluator(rulesFile.readlines(), task)
         if (not found_rules):
-            sys.exit("Error: no relevant_rules file in " + modelFolder)
+            exit("Error: no relevant_rules file in " + modelFolder)
         if (not found_model):
-            sys.exit("Error: no *.model files in " + modelFolder)
+            exit("Error: no *.model files in " + modelFolder)
         self.no_rule_schemas = set()
-        self.estimates_per_schema = defaultdict()
+        self.estimates_per_schema = {}
         self.values_off_for_schema = set()
         
     def get_estimate(self, action):
         # returns the probability that the given action is part of a plan
 
         if (not action.predicate.name in self.model):
-            if (not action.predicate.name in self.no_rule_schemas):
-                self.no_rule_schemas.add(action.predicate.name)
-            # TODO return None and handle in queue
-            return randint(0, 100) / 100 # TODO use the ratio of occurrence of this schema in plans?
+            self.no_rule_schemas.add(action.predicate.name)
+            return None
         
         if (self.model[action.predicate.name].is_classifier):
             # the returned list has only one entry, of which the second entry is the probability that the action is in the plan
