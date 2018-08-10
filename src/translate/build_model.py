@@ -3,7 +3,7 @@
 
 from __future__ import print_function
 
-import sys
+from sys import maxsize 
 import itertools
 
 import pddl
@@ -209,7 +209,7 @@ class Unifier:
             rule_gen.dump("    " * 2)
 
 class LeafGenerator:
-    index = sys.maxsize
+    index = maxsize
     def __init__(self):
         self.matches = []
     def empty(self):

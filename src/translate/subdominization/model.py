@@ -46,10 +46,11 @@ class TrainedModel():
             return None
         
         if (self.model[action.predicate.name].is_classifier):
-            # the returned list has only one entry, of which the second entry is the probability that the action is in the plan
+            # the returned list has only one entry (estimates for the input action), 
+            # of which the second entry is the probability that the action is in the plan (class 1)
             estimate = self.model[action.predicate.name].model.predict_proba([self.ruleEvaluator.evaluate(action)])[0][1]
         else:
-            estimate = self.model[action.predicate.name].model.predict([self.ruleEvaluator.evaluate(action)])[0]#[1]
+            estimate = self.model[action.predicate.name].model.predict([self.ruleEvaluator.evaluate(action)])[0]
 
         if (estimate < 0 or estimate > 1): # in case the estimate is off
             self.values_off_for_schema.add(action.predicate.name)

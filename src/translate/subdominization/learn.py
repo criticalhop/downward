@@ -20,7 +20,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 
 
-class LearnRules():    
+class LearnRules():
     def __init__(self):
         pass
 
