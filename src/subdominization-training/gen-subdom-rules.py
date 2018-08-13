@@ -79,10 +79,11 @@ def get_predicate_combinations_with_mandatory_parameter (predicates, constants, 
 
 
 class PartiallyInstantiatedPredicateList:
-     def __init__(self, action_schema, predicate_list, params ):
+     def __init__(self, action_schema, predicate_list, params, free_vars = []):
           self.action_schema = action_schema
           self.predicate_list = predicate_list
           self.parameters = params
+          self.free_variables = free_vars
 
      def get_rules(self):
           rules = []
@@ -95,17 +96,27 @@ class PartiallyInstantiatedPredicateList:
 
      def extend(self, predicates, constants):
           res = []
-          last_predicate = [p for p in predicates if p.name == self.predicate_list[-1][0]][0]
-          for i, arg in enumerate(self.predicate_list[-1][1]):
-               if arg == "_":
-                    mandatory_argument = last_predicate.arguments[i]
-                    mandatory_argument.name = "?p%d" % len(self.parameters)
-                    new_args = list(self.predicate_list[-1][1])
-                    new_args[i] = mandatory_argument.name
-                    new_p_list = self.predicate_list[:-1]
-                    new_p_list.append((self.predicate_list[-1][0], tuple(new_args)) )
-                    for pre in get_predicate_combinations_with_mandatory_parameter(predicates, constants, self.parameters, mandatory_argument):
-                         res.append(PartiallyInstantiatedPredicateList(self.action_schema, new_p_list + [pre], self.parameters + [mandatory_argument] ))
+          
+          # Add a free variable in some of the predicates
+          for p_index, pred in enumerate (self.predicate_list):
+               last_predicate = [p for p in predicates if p.name == pred[0]] [0]
+               for i, arg in enumerate(pred[1]):
+                    if arg == "_":
+                         mandatory_argument = last_predicate.arguments[i]
+                         mandatory_argument.name = "?fv%d" % len(self.free_variables)
+                         new_args = list(pred[1])
+                         new_args[i] = mandatory_argument.name
+                         new_p_list = self.predicate_list[:p_index] + self.predicate_list[p_index+1:]
+                         new_p_list.append((pred[0], tuple(new_args)) )
+                         for pre in get_predicate_combinations_with_mandatory_parameter(predicates, constants, self.parameters, mandatory_argument):
+                              res.append(PartiallyInstantiatedPredicateList(self.action_schema, new_p_list + [pre], self.parameters, self.free_variables + [mandatory_argument] ))
+
+          # Reuse a free variable
+          for fv in self.free_variables:
+               for pre in get_predicate_combinations_with_mandatory_parameter(predicates, constants, self.parameters, fv):
+                         res.append(PartiallyInstantiatedPredicateList(self.action_schema, self.predicate_list + [pre], self.parameters, self.free_variables ))
+
+               
           return res
           
 
