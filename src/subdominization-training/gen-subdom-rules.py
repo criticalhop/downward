@@ -29,7 +29,6 @@ class Rule:
      def __repr__(self):
          return "{} :- {}.".format(self.head, ", ".join(self.body))
 
-    
 
 def partition(collection):
     if len(collection) == 1:
@@ -131,6 +130,7 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument("domain", type=argparse.FileType('r'), help="Domain file")
     argparser.add_argument("--store_rules", type=argparse.FileType('w'), help="Results file")
+    argparser.add_argument("--rule_size", type=int, help="Maximum rule size", default=1)
 
     options = argparser.parse_args()
 
@@ -146,9 +146,12 @@ if __name__ == "__main__":
 
           predicate_combinations = get_predicate_combinations(predicates, constants, a.parameters)
 
-          predicate_combinations_2 = [pre for p in predicate_combinations for pre in p.extend(predicates, constants)]
+          new_predicate_combinations = predicate_combinations
+          for i in range (2, options.rule_size+1):
+               new_predicate_combinations = [pre for p in new_predicate_combinations for pre in p.extend(predicates, constants)]
+               predicate_combinations += new_predicate_combinations
           
-          rules = get_equality_rules (a) + [rule for predcom in predicate_combinations + predicate_combinations_2 for rule in predcom.get_rules() ]
+          rules = get_equality_rules (a) + [rule for predcom in predicate_combinations for rule in predcom.get_rules() ]
 
                     
           if options.store_rules:
