@@ -43,6 +43,8 @@ if __name__ == "__main__":
     argparser.add_argument("training_rules", type=argparse.FileType('r'), help="File that contains the rules used to generate training data by gen-subdominization-training")
     argparser.add_argument("store_training_data", help="File to store the training data by gen-subdominization-training")    
 
+    argparser.add_argument("--debug_info", help="Include action name in the file", action="store_true")    
+
     argparser.add_argument("--opfile", default="sas_plan", help="File to store the training data by gen-subdominization-training")    
 
     options = argparser.parse_args()
@@ -53,7 +55,7 @@ if __name__ == "__main__":
     operators_filename = options.opfile
 
     i = 0
-    for task_run in sorted(os.listdir(options.runs_folder)):
+    for task_run in sorted(os.listdir(options.runs_folder))[::-1]:
         # if i > 20:
         #     break
         if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, operators_filename)):
@@ -117,7 +119,10 @@ if __name__ == "__main__":
                 #print( ",".join(map (str, [action.name] + eval + [is_in_plan])) )
                 
                 schema = action.name.split(' ')[0][1:]
-                training_lines [schema].append(",".join(map (str, eval + [is_in_plan])))
+                new_line = ",".join(map (str, eval + [is_in_plan]))
+                if options.debug_info:
+                    new_line = ",".join([task_run, action.name, new_line])
+                training_lines [schema].append(new_line)
 
 
         
