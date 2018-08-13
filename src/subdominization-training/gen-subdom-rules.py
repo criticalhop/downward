@@ -3,15 +3,12 @@
 
 from __future__ import print_function
 
-import sys
+from collections import defaultdict
 import itertools
-from itertools import chain, combinations
-import pddl
-import string
-import options
 
-from build_model import *
-from instantiate import *
+from pddl_parser import parsing_functions
+from pddl_parser import lisp_parser
+import argparse
 
 
 
@@ -57,19 +54,19 @@ def get_equality_rules(action_schema):
     for ptype in parameters_by_type:
         params = parameters_by_type[ptype]
         if len(params) > 1:
-            for argpair in combinations (params, 2):
+            for argpair in itertools.combinations (params, 2):
                 rules.append(Rule(action_schema, "equal:(%s, %s)" % argpair))
 
     return rules
 
-def get_predicate_combinations_with_mandatory_parameter (task, parameters, mandatory_parameter):
+def get_predicate_combinations_with_mandatory_parameter (predicates, constants, parameters, mandatory_parameter):
      predicate_combinations = []
-     for p in task.predicates:
+     for p in predicates:
           valid_positions_mandatory = [i for (i, arg) in enumerate(p.arguments) if mandatory_parameter.type_name == arg.type_name]
 
           for pos in valid_positions_mandatory:
                valid_arguments_parameters = [[mandatory_parameter.name] if i == pos else ( ["_"] + [x.name for x in parameters if x.type_name == arg.type_name]) for (i, arg) in enumerate(p.arguments)]
-               valid_arguments_constants = [["_"] + [x.name for x in task.constants if x.type_name == arg.type_name] for arg in p.arguments]
+               valid_arguments_constants = [["_"] + [x.name for x in constants if x.type_name == arg.type_name] for arg in p.arguments]
                for combination in itertools.product(*valid_arguments_parameters):
                     if set(combination) == set("_"):
                          continue
@@ -97,9 +94,9 @@ class PartiallyInstantiatedPredicateList:
                     rules.append(Rule(self.action_schema, ";".join(rule_text_list)))
           return rules
 
-     def extend(self, task):
+     def extend(self, predicates, constants):
           res = []
-          last_predicate = [p for p in task.predicates if p.name == self.predicate_list[-1][0]][0]
+          last_predicate = [p for p in predicates if p.name == self.predicate_list[-1][0]][0]
           for i, arg in enumerate(self.predicate_list[-1][1]):
                if arg == "_":
                     mandatory_argument = last_predicate.arguments[i]
@@ -108,16 +105,16 @@ class PartiallyInstantiatedPredicateList:
                     new_args[i] = mandatory_argument.name
                     new_p_list = self.predicate_list[:-1]
                     new_p_list.append((self.predicate_list[-1][0], tuple(new_args)) )
-                    for pre in get_predicate_combinations_with_mandatory_parameter(task, self.parameters, mandatory_argument):
+                    for pre in get_predicate_combinations_with_mandatory_parameter(predicates, constants, self.parameters, mandatory_argument):
                          res.append(PartiallyInstantiatedPredicateList(self.action_schema, new_p_list + [pre], self.parameters + [mandatory_argument] ))
           return res
           
 
-def get_predicate_combinations (task, parameters):
+def get_predicate_combinations (predicates, constants, parameters):
      predicate_combinations = []
-     for p in task.predicates:          
+     for p in predicates:          
           valid_arguments_parameters = [["_"] + [x.name for x in parameters if x.type_name == arg.type_name] for arg in p.arguments]
-          valid_arguments_constants = [["_"] + [x.name for x in task.constants if x.type_name == arg.type_name] for arg in p.arguments]
+          valid_arguments_constants = [["_"] + [x.name for x in constants if x.type_name == arg.type_name] for arg in p.arguments]
           for combination in itertools.product(*valid_arguments_parameters):
                if set(combination) == set("_"):
                     continue
@@ -129,25 +126,27 @@ def get_predicate_combinations (task, parameters):
      return predicate_combinations
 
 if __name__ == "__main__":
-    import pddl_parser
-    import normalize
-    import pddl_to_prolog
 
-    print("Parsing...")
-    task = pddl_parser.open()
-    print("Normalizing...")
-    normalize.normalize(task)
 
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("domain", type=argparse.FileType('r'), help="Domain file")
+    argparser.add_argument("--store_rules", type=argparse.FileType('w'), help="Results file")
+
+    options = argparser.parse_args()
+
+    domain_pddl = lisp_parser.parse_nested_list(options.domain)
+    
+    domain_name, domain_requirements, types, type_dict, constants, predicates, predicate_dict, functions, actions, axioms = parsing_functions.parse_domain_pddl(domain_pddl)
 
     if options.store_rules:
          frules = options.store_rules
          
-    for a in task.actions:
+    for a in actions:
           print ("Generate candidate rules for action %s" % a.name)
 
-          predicate_combinations = get_predicate_combinations(task, a.parameters)
+          predicate_combinations = get_predicate_combinations(predicates, constants, a.parameters)
 
-          predicate_combinations_2 = [pre for p in predicate_combinations for pre in p.extend(task)]
+          predicate_combinations_2 = [pre for p in predicate_combinations for pre in p.extend(predicates, constants)]
           
           rules = get_equality_rules (a) + [rule for predcom in predicate_combinations + predicate_combinations_2 for rule in predcom.get_rules() ]
 
@@ -163,10 +162,4 @@ if __name__ == "__main__":
 
 
         
-
-
-    # relaxed_reachable, atoms, actions, axioms, _ = explore(task)
-    # for action in actions:
-    #     rule_result = [1, 0, 1, 0]
-    #     print(", ".join([action.name] + list(map(str, rule_result))))
 
