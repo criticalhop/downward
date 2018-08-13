@@ -3,7 +3,7 @@
 from __future__ import print_function
 
 from collections import defaultdict
-from rule_evaluator import *
+from rule_training_evaluator import *
 import lisp_parser
 
 try:
@@ -54,13 +54,15 @@ if __name__ == "__main__":
 
     operators_filename = options.opfile
 
+    training_re = RuleTrainingEvaluator(options.training_rules.readlines())
     i = 0
     for task_run in sorted(os.listdir(options.runs_folder))[::-1]:
-        # if i > 20:
-        #     break
+        if i > 2:
+             break
         if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, operators_filename)):
             continue
         i += 1
+        print (i)
 
         domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
         task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
@@ -69,22 +71,20 @@ if __name__ == "__main__":
         task_pddl = parse_pddl_file("task", task_filename)
 
         task = parsing_functions.parse_task(domain_pddl, task_pddl)
-    
-        re = RulesEvaluator(options.training_rules.readlines(), task)
-        re.eliminate_rules(relevant_rules)
-        
+        training_re.init_task(task)        
         relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
 
         for action in actions:
-            evaluation = re.evaluate(action)                
+            training_re.evaluate(action)                
 
-        relevant_rules.update(re.get_relevant_rules())
+    training_re.print_statistics()
 
-        #print(relevant_rules)
     
+
+
+    relevant_rules = training_re.get_relevant_rules()
     print ("Relevant rules: ", len(relevant_rules))
 
-    relevant_rules = sorted(list(relevant_rules))
     output_file = open('{}/relevant_rules'.format(options.store_training_data), 'w')
     output_file.write("\n".join(relevant_rules))
     output_file.close()

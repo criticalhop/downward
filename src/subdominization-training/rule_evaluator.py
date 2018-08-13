@@ -326,17 +326,13 @@ class RuleEval:
         arguments = action.name[:-1].split(" ")[1:]
         if self.free_variable_domains:
                 #for fv_values in itertools.product(*[valueset for x, valueset in self.free_variable_domains.items()]):
-                self.evaluation_result_count_0 += 1
                 return 0
         else:
                 for c in self.constraints:
                         if not c.evaluate(arguments):
-                                self.evaluation_result_count_0 += 1
                                 return 0
-              
-        
+                      
                 #print (action.name, "valid according to", self.text)
-                self.evaluation_result_count_1 += 1
                 #print ("Evaluate", self.text, action, 1)
                 return 1
     
@@ -354,9 +350,6 @@ class RulesEvaluator:
     def evaluate(self, action):
         name = action.name.split(" ")[0][1:]
         return [rule.evaluate(action) for rule in  self.rules[name]]
-
-    def get_relevant_rules(self):
-        return [rule.text for (schema, rules)  in self.rules.items() for rule in rules if rule.evaluation_result_count_0 > 0 and rule.evaluation_result_count_1 > 0]
 
     def get_all_rules (self):
         return [rule.text for (schema, rules)  in self.rules.items() for rule in rules]
