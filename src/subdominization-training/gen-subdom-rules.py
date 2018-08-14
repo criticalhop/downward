@@ -40,21 +40,6 @@ def partition(collection):
         # put `first` in its own subset 
         yield [ [ first ] ] + smaller
 
-def get_equality_rules(action_schema):
-    parameters = action_schema.parameters
-    parameters_by_type = defaultdict(list)
-    for p in parameters:
-        parameters_by_type[p.type_name].append(p.name)
-
-    rules = []
-    for ptype in parameters_by_type:
-        params = parameters_by_type[ptype]
-        if len(params) > 1:
-            for argpair in itertools.combinations (params, 2):
-                rules.append(Rule(action_schema, "equal:(%s, %s)" % argpair))
-
-    return rules
-
 def type_matches (type_dict, type1, type2):
      def sub_type (t1, t2):
           if t1 == t2:
@@ -66,6 +51,15 @@ def type_matches (type_dict, type1, type2):
           return False
      
      return sub_type (type1, type2) or sub_type (type2, type1)
+
+def get_equality_rules(type_dict, action_schema):
+    parameter_pairs = [(a.name, b.name) for (a, b) in itertools.combinations (action_schema.parameters, 2) if type_matches(type_dict, a.type_name, b.type_name)]
+    rules = []
+    for argpair in parameter_pairs:
+                rules.append(Rule(action_schema, "equal:(%s, %s)" % argpair))
+
+    return rules
+
      
 def get_predicate_combinations_with_mandatory_parameter (predicates, constants, type_dict, parameters, mandatory_parameter):
      predicate_combinations = []
@@ -175,7 +169,7 @@ if __name__ == "__main__":
                new_predicate_combinations = [pre for p in new_predicate_combinations for pre in p.extend(predicates, constants, type_dict)]
                predicate_combinations += new_predicate_combinations
           
-          rules = get_equality_rules (a) + [rule for predcom in predicate_combinations for rule in predcom.get_rules() ]
+          rules = get_equality_rules (type_dict, a) + [rule for predcom in predicate_combinations for rule in predcom.get_rules() ]
 
                     
           if options.store_rules:
