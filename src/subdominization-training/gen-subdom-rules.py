@@ -10,9 +10,6 @@ from pddl_parser import parsing_functions
 from pddl_parser import lisp_parser
 import argparse
 
-
-
-
 #move(X, _, A) :- goal:at(X, B), grounded:move(X, A, B).
 
 #move(X, _, A) :- goal:at(X, C), grounded:move(X, A, B).
@@ -58,14 +55,26 @@ def get_equality_rules(action_schema):
 
     return rules
 
-def get_predicate_combinations_with_mandatory_parameter (predicates, constants, parameters, mandatory_parameter):
+def type_matches (type_dict, type1, type2):
+     def sub_type (t1, t2):
+          if t1 == t2:
+               return True
+
+          suptype = type_dict [t1].basetype_name
+          if suptype:
+               return sub_type (suptype, type2)
+          return False
+     
+     return sub_type (type1, type2) or sub_type (type2, type1)
+     
+def get_predicate_combinations_with_mandatory_parameter (predicates, constants, type_dict, parameters, mandatory_parameter):
      predicate_combinations = []
      for p in predicates:
-          valid_positions_mandatory = [i for (i, arg) in enumerate(p.arguments) if mandatory_parameter.type_name == arg.type_name]
+          valid_positions_mandatory = [i for (i, arg) in enumerate(p.arguments) if type_matches(type_dict, mandatory_parameter.type_name, arg.type_name)]
 
           for pos in valid_positions_mandatory:
-               valid_arguments_parameters = [[mandatory_parameter.name] if i == pos else ( ["_"] + [x.name for x in parameters if x.type_name == arg.type_name]) for (i, arg) in enumerate(p.arguments)]
-               valid_arguments_constants = [["_"] + [x.name for x in constants if x.type_name == arg.type_name] for arg in p.arguments]
+               valid_arguments_parameters = [[mandatory_parameter.name] if i == pos else ( ["_"] + [x.name for x in parameters if type_matches(type_dict, x.type_name, arg.type_name)]) for (i, arg) in enumerate(p.arguments)]
+               valid_arguments_constants = [["_"] + [x.name for x in constants if type_matches(type_dict, x.type_name, arg.type_name)] for arg in p.arguments]
                for combination in itertools.product(*valid_arguments_parameters):
                     if set(combination) == set("_"):
                          continue
@@ -94,7 +103,7 @@ class PartiallyInstantiatedPredicateList:
                     rules.append(Rule(self.action_schema, ";".join(rule_text_list)))
           return rules
 
-     def extend(self, predicates, constants):
+     def extend(self, predicates, constants, type_dict):
           res = []
           
           # Add a free variable in some of the predicates
@@ -108,23 +117,23 @@ class PartiallyInstantiatedPredicateList:
                          new_args[i] = mandatory_argument.name
                          new_p_list = self.predicate_list[:p_index] + self.predicate_list[p_index+1:]
                          new_p_list.append((pred[0], tuple(new_args)) )
-                         for pre in get_predicate_combinations_with_mandatory_parameter(predicates, constants, self.parameters, mandatory_argument):
+                         for pre in get_predicate_combinations_with_mandatory_parameter(predicates, constants, type_dict, self.parameters, mandatory_argument):
                               res.append(PartiallyInstantiatedPredicateList(self.action_schema, new_p_list + [pre], self.parameters, self.free_variables + [mandatory_argument] ))
 
           # Reuse a free variable
           for fv in self.free_variables:
-               for pre in get_predicate_combinations_with_mandatory_parameter(predicates, constants, self.parameters, fv):
+               for pre in get_predicate_combinations_with_mandatory_parameter(predicates, constants, type_dict, self.parameters, fv):
                          res.append(PartiallyInstantiatedPredicateList(self.action_schema, self.predicate_list + [pre], self.parameters, self.free_variables ))
 
                
           return res
           
 
-def get_predicate_combinations (predicates, constants, parameters):
+def get_predicate_combinations (predicates, constants, type_dict,  parameters):
      predicate_combinations = []
      for p in predicates:          
-          valid_arguments_parameters = [["_"] + [x.name for x in parameters if x.type_name == arg.type_name] for arg in p.arguments]
-          valid_arguments_constants = [["_"] + [x.name for x in constants if x.type_name == arg.type_name] for arg in p.arguments]
+          valid_arguments_parameters = [["_"] + [x.name for x in parameters if type_matches(type_dict, x.type_name, arg.type_name)] for arg in p.arguments]
+          valid_arguments_constants = [["_"] + [x.name for x in constants if type_matches(type_dict, x.type_name, arg.type_name)] for arg in p.arguments]
           for combination in itertools.product(*valid_arguments_parameters):
                if set(combination) == set("_"):
                     continue
@@ -149,17 +158,21 @@ if __name__ == "__main__":
     
     domain_name, domain_requirements, types, type_dict, constants, predicates, predicate_dict, functions, actions, axioms = parsing_functions.parse_domain_pddl(domain_pddl)
 
+    
+    predicates = [p for p in predicates if p.name != "="]
+   
+
     if options.store_rules:
          frules = options.store_rules
          
     for a in actions:
           print ("Generate candidate rules for action %s" % a.name)
 
-          predicate_combinations = get_predicate_combinations(predicates, constants, a.parameters)
+          predicate_combinations = get_predicate_combinations(predicates, constants, type_dict, a.parameters)
 
           new_predicate_combinations = predicate_combinations
           for i in range (2, options.rule_size+1):
-               new_predicate_combinations = [pre for p in new_predicate_combinations for pre in p.extend(predicates, constants)]
+               new_predicate_combinations = [pre for p in new_predicate_combinations for pre in p.extend(predicates, constants, type_dict)]
                predicate_combinations += new_predicate_combinations
           
           rules = get_equality_rules (a) + [rule for predcom in predicate_combinations for rule in predcom.get_rules() ]

@@ -51,8 +51,9 @@ class RuleTrainingEvaluator:
             
     def evaluate(self, action):
         name = action.name.split(" ")[0][1:]
-        new_rules = [rule.evaluate(action) for rule in self.rules[name]]
-        self.rules[name] += [r for r in new_rules if r]
+        if name in self.rules:
+            new_rules = [rule.evaluate(action) for rule in self.rules[name]]
+            self.rules[name] += [r for r in new_rules if r]
 
     def get_relevant_rules(self):
         return [rule.get_text() for (schema, rules)  in self.rules.items() for rule in rules if rule.evaluation_result_count_0 > 0 and rule.evaluation_result_count_1 > 0]
