@@ -57,7 +57,7 @@ if __name__ == "__main__":
         if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, 'sas_plan')):
             continue
 
-        print (i)
+        #print (i)
         i += 1
 
         domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
@@ -73,10 +73,10 @@ if __name__ == "__main__":
         for action in actions:
             training_re.evaluate(action)                
 
-    training_re.print_statistics()  
+    #training_re.print_statistics()  
 
     relevant_rules = training_re.get_relevant_rules()
-    print ("Relevant rules: ", len(relevant_rules))
+    #print ("Relevant rules: ", len(relevant_rules))
 
     options.output.write("\n".join(map(lambda x : x.replace('\n', ''), relevant_rules)))
 
