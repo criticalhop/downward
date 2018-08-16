@@ -136,7 +136,7 @@ def get_free_variable_domains (constraints):
 
 class RuleEval:
     def __init__(self, rule_text, task):
-        print("Loading: " + rule_text)
+#         print("Loading: " + rule_text)
         self.text = rule_text.replace('\n','')
         head, body = rule_text.split(":-")
         self.action_schema, action_arguments = head.split(" (")
@@ -145,7 +145,7 @@ class RuleEval:
         action_arguments = action_arguments.replace(")", "").replace("\n", "").replace(".", "").replace(" ", "").split(",")
 
         for rule in body.split(";"):
-            print(rule)
+#             print(rule)
             rule_type, rule = rule.split(":")
             rule_type = rule_type.strip()
 
@@ -168,7 +168,6 @@ class RuleEval:
                  print("Error: unknown rule ", rule_type, rule)
                  exit()
 
-            print(compliant_values)
             action_arguments_rule = tuple(map(lambda x : action_arguments.index(x),  filter(lambda x : x in action_arguments, arguments)))
             free_variables = tuple (filter(lambda x : x not in action_arguments, arguments))
 
