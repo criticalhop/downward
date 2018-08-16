@@ -9,11 +9,7 @@ import itertools
 from pddl_parser import parsing_functions
 from pddl_parser import lisp_parser
 import argparse
-
-#move(X, _, A) :- goal:at(X, B), grounded:move(X, A, B).
-
-#move(X, _, A) :- goal:at(X, C), grounded:move(X, A, B).
-
+import copy
 
 class Rule:
      def __init__ (self, action_schema, rule):
@@ -82,11 +78,15 @@ def get_predicate_combinations_with_mandatory_parameter (predicates, constants, 
 
 
 class PartiallyInstantiatedPredicateList:
+     
      def __init__(self, action_schema, predicate_list, params, free_vars = []):
-          self.action_schema = action_schema
-          self.predicate_list = predicate_list
-          self.parameters = params
-          self.free_variables = free_vars
+          self.action_schema = copy.deepcopy(action_schema)
+          self.predicate_list = copy.deepcopy(predicate_list)
+          self.parameters = copy.deepcopy(params)
+          self.free_variables = copy.deepcopy(free_vars)
+
+          for fv in self.free_variables:
+               assert (sum([1 for p, args in self.predicate_list if fv.name in list(args)]) > 1) 
 
      def get_rules(self):
           rules = []
@@ -95,6 +95,7 @@ class PartiallyInstantiatedPredicateList:
                rule_text_list = ["{}:{}({})".format(combination[i], pred[0], ", ".join(pred[1])) for (i, pred) in enumerate(self.predicate_list)]
                if len(set (rule_text_list)) == len(rule_text_list):
                     rules.append(Rule(self.action_schema, ";".join(rule_text_list)))
+
           return rules
 
      def extend(self, predicates, constants, type_dict):
@@ -119,7 +120,7 @@ class PartiallyInstantiatedPredicateList:
                for pre in get_predicate_combinations_with_mandatory_parameter(predicates, constants, type_dict, self.parameters, fv):
                          res.append(PartiallyInstantiatedPredicateList(self.action_schema, self.predicate_list + [pre], self.parameters, self.free_variables ))
 
-               
+
           return res
           
 
