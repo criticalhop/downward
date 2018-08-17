@@ -77,13 +77,41 @@ def get_predicate_combinations_with_mandatory_parameter (predicates, constants, 
 
 
 
-class PartiallyInstantiatedPredicateList:
-     
+class PartiallyInstantiatedPredicateList:    
      def __init__(self, action_schema, predicate_list, params, free_vars = []):
           self.action_schema = copy.deepcopy(action_schema)
-          self.predicate_list = copy.deepcopy(predicate_list)
           self.parameters = copy.deepcopy(params)
-          self.free_variables = copy.deepcopy(free_vars)
+
+          if len (free_vars) > 1:
+               self.free_variables = []
+               self.predicate_list = []
+               fv_renaming = {}
+               fvid = 0
+               for p in sorted(predicate_list):
+                    new_args = []
+                    for arg in p[1]:
+                         if arg in fv_renaming:
+                              new_args.append(fv_renaming[arg])
+                         elif arg.startswith("?fv"):
+                              new_name = "?fv{}".format(fvid)
+                              fv_renaming[arg] = new_name
+                              old_fv = [f for f in free_vars if f.name == arg]
+                              assert(len(old_fv) == 1)
+                              new_fv = copy.deepcopy(old_fv[0])
+                              new_fv.name = new_name
+                              self.free_variables.append(new_fv)
+                              fvid += 1
+                              new_args.append(new_name)
+                         else:
+                              new_args.append(arg)
+                         
+                    self.predicate_list.append((p[0], tuple(new_args)))                         
+          else:
+               self.predicate_list = copy.deepcopy(sorted(predicate_list))
+               self.free_variables = copy.deepcopy(free_vars)
+
+          assert (len(self.predicate_list) == len(predicate_list))
+
 
           for fv in self.free_variables:
                assert (sum([1 for p, args in self.predicate_list if fv.name in list(args)]) > 1) 
@@ -122,10 +150,17 @@ class PartiallyInstantiatedPredicateList:
 
 
           return res
+
+     def __eq__ (self, other):
+          return self.predicate_list == other.predicate_list
+
+     def __hash__(self):
+          return hash(tuple(self.predicate_list))
+
           
 
 def get_predicate_combinations (predicates, constants, type_dict,  parameters):
-     predicate_combinations = []
+     predicate_combinations = set()
      for p in predicates:          
           valid_arguments_parameters = [["_"] + [x.name for x in parameters if type_matches(type_dict, x.type_name, arg.type_name)] for arg in p.arguments]
           valid_arguments_constants = [["_"] + [x.name for x in constants if type_matches(type_dict, x.type_name, arg.type_name)] for arg in p.arguments]
@@ -135,7 +170,7 @@ def get_predicate_combinations (predicates, constants, type_dict,  parameters):
 
                valid_arguments = [[x] if x != "_" else valid_arguments_constants[i] for (i, x) in enumerate (combination)]
                for combination in itertools.product(*valid_arguments):
-                    predicate_combinations.append(PartiallyInstantiatedPredicateList(a, [(p.name, combination)], a.parameters))                        
+                    predicate_combinations.add(PartiallyInstantiatedPredicateList(a, [(p.name, combination)], a.parameters))                        
                     
      return predicate_combinations
 
@@ -163,12 +198,12 @@ if __name__ == "__main__":
     for a in actions:
           print ("Generate candidate rules for action %s" % a.name)
 
-          predicate_combinations = get_predicate_combinations(predicates, constants, type_dict, a.parameters)
+          predicate_combinations = list(get_predicate_combinations(predicates, constants, type_dict, a.parameters))
 
           new_predicate_combinations = predicate_combinations
           for i in range (2, options.rule_size+1):
-               new_predicate_combinations = [pre for p in new_predicate_combinations for pre in p.extend(predicates, constants, type_dict)]
-               predicate_combinations += new_predicate_combinations
+               new_predicate_combinations = set([pre for p in new_predicate_combinations for pre in p.extend(predicates, constants, type_dict)])
+               predicate_combinations += list(new_predicate_combinations)
           
           rules = get_equality_rules (type_dict, a) + [rule for predcom in predicate_combinations for rule in predcom.get_rules() ]
 
