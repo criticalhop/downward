@@ -8,6 +8,8 @@ import numpy as np
 from collections import defaultdict
 from rule_training_evaluator import *
 import lisp_parser
+import shutil
+import bz2
 
 try:
     # Python 3.x
@@ -52,9 +54,17 @@ if __name__ == "__main__":
 
     options = argparser.parse_args()
 
+    if os.path.exists(options.store_training_data):
+        result = raw_input('Output path "{}" already exists. Overwrite (y/n)?'.format(options.store_training_data))
+        if result.lower() not in ['y', 'yes']:
+            exit()
+        shutil.rmtree(options.store_training_data)
+
+        
     relevant_rules = set()
 
     operators_filename = options.op_file
+
 
     if options.instances_relevant_rules:
         training_re = RuleTrainingEvaluator(options.training_rules.readlines())
@@ -77,9 +87,9 @@ if __name__ == "__main__":
             training_re.init_task(task)        
             # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
             
-            operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
+            all_operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
 
-            with bz2.BZ2File(operators_filename, "r") as actions:
+            with bz2.BZ2File(all_operators_filename, "r") as actions:
                 # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
                 for action in actions:
                     training_re.evaluate(action.strip())                
@@ -120,43 +130,61 @@ if __name__ == "__main__":
         domain_pddl = parse_pddl_file("domain", domain_filename)
         task_pddl = parse_pddl_file("task", task_filename)
 
+        all_operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
+           
         task = parsing_functions.parse_task(domain_pddl, task_pddl)
     
         re = RulesEvaluator(relevant_rules, task)
 
-        relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+        #relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
 
         with open(plan_filename) as plan_file:
-            plan = set(map (lambda x : x.replace("\n", ""), plan_file.readlines()))
-
-            for action in actions:
-                is_in_plan = 1 if action.name in plan or action.name.replace("(", "").replace(")", "") in plan else 0
-                #print (action.name, is_in_plan)
-                eval = re.evaluate(action)
-                #print( ",".join(map (str, [action.name] + eval + [is_in_plan])) )
-                
-                schema = action.name.split(' ')[0][1:]
-                new_line = ",".join(map (str, eval + [is_in_plan]))
-                if options.debug_info:
-                    new_line = ",".join([task_run, action.name, new_line])
-
-                if is_test_instance:
-                    testing_lines [schema].append(new_line)
-                else:
-                    training_lines [schema].append(new_line)
-        
+            plan = set(map (lambda x : tuple(x.replace("\n", "").replace(")", "").replace("(", "").split(" ")), plan_file.readlines()))
             
-    for schema in training_lines:
-        output_file = open('{}/{}.csv'.format(options.store_training_data, schema), 'w')
-        for line in training_lines[schema]:
-            output_file.write(line + "\n")
-        output_file.close()
+            with bz2.BZ2File(all_operators_filename, "r") as actions:
+            # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+                for action in actions:
+                    schema, arguments = action.split("(")
+                    arguments = map(lambda x: x.strip(), arguments.strip()[:-1].split(","))
+                   
+                    is_in_plan = 1 if  tuple([schema] + arguments) in plan else 0
+                   
+                    eval = re.evaluate(schema, arguments)
+                    #print( ",".join(map (str, [action.name] + eval + [is_in_plan])) )
+                
+                    new_line = ",".join(map (str, eval + [is_in_plan]))
+                    if options.debug_info:
+                        new_line = ",".join([task_run, action, new_line])
 
-    for schema in testing_lines:
-        output_file = open('{}/test_{}.csv'.format(options.store_training_data, schema), 'w')
-        for line in testing_lines[schema]:
-            output_file.write(line + "\n")
-        output_file.close()
+                    if is_test_instance:
+                        testing_lines [schema].append(new_line)
+                    else:
+                        training_lines [schema].append(new_line)
+    
+    if testing_lines:
+        os.makedirs('{}/training'.format(options.store_training_data))
+
+        shutil.move ('{}/relevant_rules'.format(options.store_training_data), '{}/training/relevant_rules'.format(options.store_training_data))
+        
+        for schema in sorted(training_lines, key=lambda x : (x.count(";"), x)):
+            output_file = open('{}/training/{}.csv'.format(options.store_training_data, schema), 'w')
+            for line in training_lines[schema]:
+                output_file.write(line + "\n")
+            output_file.close()
+
+        os.makedirs('{}/testing'.format(options.store_training_data))
+        for schema in sorted(testing_lines, key=lambda x : (x.count(";"), x)):
+            output_file = open('{}/testing/{}.csv'.format(options.store_training_data, schema), 'w')
+            for line in testing_lines[schema]:
+                output_file.write(line + "\n")
+            output_file.close()
+    else:
+        for schema in sorted(training_lines, key=lambda x : (x.count(";"), x)):
+            output_file = open('{}/{}.csv'.format(options.store_training_data, schema), 'w')
+            for line in training_lines[schema]:
+                output_file.write(line + "\n")
+            output_file.close()
+
 
                            
     #print ("Only 0/1 rules: ", len(re.get_only_0_rules()), len(re.get_only_1_rules()), len(re.get_all_rules()))
