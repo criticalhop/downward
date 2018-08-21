@@ -56,9 +56,10 @@ class RuleTrainingEvaluator:
         if name in self.rules:
             new_rules = [rule.evaluate(arguments) for rule in self.rules[name]]
             self.rules[name] += [r for r in new_rules if r]
-        else:
-            print ("Error: unrecognized action name: {}".format(name))
-            exit()
+        ################################# This case can happen if we do not have any rules for some schemas
+        # else:
+        #     print ("Error: unrecognized action name: {}".format(name))
+        #     exit()
     def get_relevant_rules(self):
         return [rule.get_text() for (schema, rules)  in self.rules.items() for rule in rules if rule.evaluation_result_count_0 > 0 and rule.evaluation_result_count_1 > 0]
 
