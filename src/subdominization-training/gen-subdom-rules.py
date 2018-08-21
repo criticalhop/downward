@@ -13,8 +13,6 @@ import copy
 import os
 import pddl
 
-import options
-
 try:
     # Python 3.x
     from builtins import open as file_open
