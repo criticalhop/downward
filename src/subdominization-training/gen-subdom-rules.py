@@ -10,6 +10,32 @@ from pddl_parser import parsing_functions
 from pddl_parser import lisp_parser
 import argparse
 import copy
+import os
+import pddl
+
+try:
+    # Python 3.x
+    from builtins import open as file_open
+except ImportError:
+    # Python 2.x
+    from codecs import open as file_open
+
+def parse_pddl_file(type, filename):
+    try:
+        # The builtin open function is shadowed by this module's open function.
+        # We use the Latin-1 encoding (which allows a superset of ASCII, of the
+        # Latin-* encodings and of UTF-8) to allow special characters in
+        # comments. In all other parts, we later validate that only ASCII is
+        # used.
+        return lisp_parser.parse_nested_list(file_open(filename,
+                                                       encoding='ISO-8859-1'))
+    except IOError as e:
+        raise SystemExit("Error: Could not read file: %s\nReason: %s." %
+                         (e.filename, e))
+    except lisp_parser.ParseError as e:
+        raise SystemExit("Error: Could not parse %s file: %s\nReason: %s." %
+                         (type, filename, e))
+
 
 class Rule:
      def __init__ (self, action_schema, rule):
@@ -76,10 +102,30 @@ def get_predicate_combinations_with_mandatory_parameter (predicates, constants, 
      return predicate_combinations
 
 
+def read_runs_folder(runs_folder):
+     ini_predicates = set()
+     goal_predicates = set()
+     for task_run in sorted(os.listdir(runs_folder)):
+          if not os.path.isfile('{}/{}/{}'.format(runs_folder, task_run, 'sas_plan')):
+               continue
+
+          domain_filename = '{}/{}/{}'.format(runs_folder, task_run, "domain.pddl")
+          task_filename = '{}/{}/{}'.format(runs_folder, task_run, "problem.pddl")
+          
+          domain_pddl = parse_pddl_file("domain", domain_filename)
+          task_pddl = parse_pddl_file("task", task_filename)
+          task = parsing_functions.parse_task(domain_pddl, task_pddl)
+
+
+          
+          ini_predicates.update([p.predicate for p in task.init if type(p) != pddl.Assign])
+          goal_predicates.update([p.predicate for p in task.goal.parts])
+
+     return ini_predicates, goal_predicates
 
 class PartiallyInstantiatedPredicateList:    
      def __init__(self, action_schema, predicate_list, params, free_vars = []):
-          self.action_schema = copy.deepcopy(action_schema)
+          self.action_schema = action_schema
           self.parameters = copy.deepcopy(params)
 
           if len (free_vars) > 1:
@@ -116,10 +162,11 @@ class PartiallyInstantiatedPredicateList:
           for fv in self.free_variables:
                assert (sum([1 for p, args in self.predicate_list if fv.name in list(args)]) > 1) 
 
-     def get_rules(self):
+     def get_rules(self, predicates_ini, predicates_goal):
           rules = []
           for combination in itertools.product(*[["ini", "goal"] for x in self.predicate_list]):
-
+               if not all ([(combination[i] == "ini" and pred[0] in predicates_ini) or (combination[i] == "goal" and pred[0] in predicates_goal)  for (i, pred) in enumerate(self.predicate_list)]):
+                    continue
                rule_text_list = ["{}:{}({})".format(combination[i], pred[0], ", ".join(pred[1])) for (i, pred) in enumerate(self.predicate_list)]
                if len(set (rule_text_list)) == len(rule_text_list):
                     rules.append(Rule(self.action_schema, ";".join(rule_text_list)))
@@ -181,31 +228,42 @@ if __name__ == "__main__":
     argparser.add_argument("domain", type=argparse.FileType('r'), help="Domain file")
     argparser.add_argument("--store_rules", type=argparse.FileType('w'), help="Results file")
     argparser.add_argument("--rule_size", type=int, help="Maximum rule size", default=1)
-
+    argparser.add_argument("--num_rules", type=int, help="Maximum rule size", default=100000000)
+    argparser.add_argument("--runs", help="path to the runs folders")
+    
     options = argparser.parse_args()
 
     domain_pddl = lisp_parser.parse_nested_list(options.domain)
     
     domain_name, domain_requirements, types, type_dict, constants, predicates, predicate_dict, functions, actions, axioms = parsing_functions.parse_domain_pddl(domain_pddl)
 
-    
     predicates = [p for p in predicates if p.name != "="]
    
 
     if options.store_rules:
          frules = options.store_rules
-         
+
+    if options.runs:
+         predicates_ini, predicates_goal = read_runs_folder(options.runs)
+    else:
+          predicates_ini = set([p.name for p in predicates])
+          predicates_goal = predicates_ini
+          
     for a in actions:
           print ("Generate candidate rules for action %s" % a.name)
 
+          rules = get_equality_rules (type_dict, a)
           predicate_combinations = list(get_predicate_combinations(predicates, constants, type_dict, a.parameters))
 
-          new_predicate_combinations = predicate_combinations
           for i in range (2, options.rule_size+1):
-               new_predicate_combinations = set([pre for p in new_predicate_combinations for pre in p.extend(predicates, constants, type_dict)])
-               predicate_combinations += list(new_predicate_combinations)
-          
-          rules = get_equality_rules (type_dict, a) + [rule for predcom in predicate_combinations for rule in predcom.get_rules() ]
+              new_rules = [rule for predcom in predicate_combinations for rule in predcom.get_rules(predicates_ini, predicates_goal) ]
+              rules += new_rules
+              print ((i-1), len(new_rules))
+
+              if len(rules) > options.num_rules:
+                  break
+
+              predicate_combinations = set([pre for p in predicate_combinations for pre in p.extend(predicates, constants, type_dict)])
 
                     
           if options.store_rules:
@@ -218,5 +276,7 @@ if __name__ == "__main__":
           print()
 
 
-        
+
+
+
 

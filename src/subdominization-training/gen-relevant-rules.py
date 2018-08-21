@@ -51,13 +51,13 @@ if __name__ == "__main__":
 
     training_re = RuleTrainingEvaluator(options.training_rules.readlines())
     i = 1
-    for task_run in sorted(os.listdir(options.runs_folder)) [::-1]:
+    for task_run in sorted(os.listdir(options.runs_folder)):
         if i > options.instances_relevant_rules:
              break
         if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, 'sas_plan')):
             continue
 
-        #print (i)
+        print (i)
         i += 1
 
         domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")

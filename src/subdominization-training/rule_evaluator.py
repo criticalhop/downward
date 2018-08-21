@@ -1,5 +1,6 @@
 from collections import defaultdict
 import itertools
+import pddl
 
 def  valid_values(variables, values, variable_domains):
         assert (len (variables) == len(values))#, "Error: {} {}".format(str(variables), str(values)))
@@ -163,7 +164,7 @@ def evaluate_inigoal_rule(rule, fact_list):
 
         arguments = valid_arguments
         for fact in fact_list:
-            if fact.predicate == predicate_name and eval_constants(fact, constants): 
+            if type(fact) != pddl.Assign and fact.predicate == predicate_name and eval_constants(fact, constants): 
                 values = []
                 for a in arguments:
                     if len(set([fact.args[p] for p in positions_argument[a]])) > 1:
