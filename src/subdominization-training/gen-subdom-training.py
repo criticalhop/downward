@@ -75,10 +75,17 @@ if __name__ == "__main__":
 
             task = parsing_functions.parse_task(domain_pddl, task_pddl)
             training_re.init_task(task)        
-            relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+            # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+            
+            operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
 
-            for action in actions:
-                training_re.evaluate(action)                
+            with bz2.BZ2File(operators_filename, "r") as actions:
+                # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+                for action in actions:
+                    training_re.evaluate(action.strip())                
+
+            # for action in actions:
+            #     training_re.evaluate(action)                
 
         training_re.print_statistics()  
 

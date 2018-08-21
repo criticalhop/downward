@@ -12,8 +12,8 @@ class TrainingRule:
     def load(self, task):
         self.rules = [RuleEval (l, task) for l in self.rules_text]
 
-    def evaluate(self, action):
-        indexes_1 = [i for i, r in enumerate(self.rules) if r.evaluate(action) == 1]
+    def evaluate(self,  arguments):
+        indexes_1 = [i for i, r in enumerate(self.rules) if r.evaluate(arguments) == 1]
         if len(indexes_1) == 0:
             self.evaluation_result_count_0 += 1
         elif len(indexes_1) == len(self.rules):
@@ -50,11 +50,15 @@ class RuleTrainingEvaluator:
                 r.load(task)
             
     def evaluate(self, action):
-        name = action.name.split(" ")[0][1:]
+        name, arguments = action.split("(")
+        arguments = map(lambda x: x.strip(), arguments.strip()[:-1].split(","))
+        
         if name in self.rules:
-            new_rules = [rule.evaluate(action) for rule in self.rules[name]]
+            new_rules = [rule.evaluate(arguments) for rule in self.rules[name]]
             self.rules[name] += [r for r in new_rules if r]
-
+        else:
+            print ("Error: unrecognized action name: {}".format(name))
+            exit()
     def get_relevant_rules(self):
         return [rule.get_text() for (schema, rules)  in self.rules.items() for rule in rules if rule.evaluation_result_count_0 > 0 and rule.evaluation_result_count_1 > 0]
 

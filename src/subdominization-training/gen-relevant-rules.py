@@ -5,6 +5,7 @@ from __future__ import print_function
 from collections import defaultdict
 from rule_training_evaluator import *
 import lisp_parser
+import bz2       
 
 try:
     # Python 3.x
@@ -59,19 +60,22 @@ if __name__ == "__main__":
 
         print (i)
         i += 1
-
-        domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
-        task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
         
+        
+        domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
+        task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")        
         domain_pddl = parse_pddl_file("domain", domain_filename)
         task_pddl = parse_pddl_file("task", task_filename)
         task = parsing_functions.parse_task(domain_pddl, task_pddl)
         
         training_re.init_task(task)
-        relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
 
-        for action in actions:
-            training_re.evaluate(action)                
+        operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
+
+        with bz2.BZ2File(operators_filename, "r") as actions:
+            # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+            for action in actions:
+                training_re.evaluate(action.strip())                
 
     #training_re.print_statistics()  
 

@@ -13,6 +13,8 @@ import copy
 import os
 import pddl
 
+import options
+
 try:
     # Python 3.x
     from builtins import open as file_open
@@ -115,7 +117,6 @@ def read_runs_folder(runs_folder):
           domain_pddl = parse_pddl_file("domain", domain_filename)
           task_pddl = parse_pddl_file("task", task_filename)
           task = parsing_functions.parse_task(domain_pddl, task_pddl)
-
 
           
           ini_predicates.update([p.predicate for p in task.init if type(p) != pddl.Assign])

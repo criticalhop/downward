@@ -23,7 +23,7 @@ class FreeVariableConstraint:
                                 domains[arg].add (values[i])
                 return domains
 
-        def free_variable_domains(self):
+        def get_free_variable_domains(self):
                 domains = {}
                 for arg in self.free_variables:
                         domains[arg] = set()
@@ -130,7 +130,7 @@ class Constraint:
                                 domains[arg].add (values[i])
                 return domains
 
-        def free_variable_domains(self):
+        def get_free_variable_domains(self):
                 return {}
 
         def update(self, free_variable_domains, action_argument_domains):
@@ -176,7 +176,7 @@ def evaluate_inigoal_rule(rule, fact_list):
                     
         return arguments, compliant_values
 
-def free_variable_domains (constraints):
+def get_free_variable_domains (constraints):
     free_variable_domains = {}
     for c in constraints:
             
@@ -222,7 +222,6 @@ class RuleEval:
             else:
                  print("Error: unknown rule ", rule_type, rule)
                  exit()
-
             
             action_arguments_rule = tuple(map(lambda x : action_arguments.index(x),  filter(lambda x : x in action_arguments, arguments)))
             free_variables = tuple (filter(lambda x : x not in action_arguments, arguments))
@@ -308,7 +307,7 @@ class RuleEval:
 
     def update_domain(self):
             for rule in self.constraints:
-                for (fv, values) in rule.free_variable_domains().items():
+                for (fv, values) in rule.get_free_variable_domains().items():
                         if fv not in self.free_variable_domains:
                                 self.free_variable_domains [fv] = values
                         else:
@@ -323,8 +322,7 @@ class RuleEval:
             
         #print (self.text, self.constraints)
 
-    def evaluate(self, action):
-        arguments = action.name[:-1].split(" ")[1:]
+    def evaluate(self, arguments):
         if self.free_variable_domains:
                 #for fv_values in itertools.product(*[valueset for x, valueset in self.free_variable_domains.items()]):
                 return 0
@@ -348,9 +346,8 @@ class RulesEvaluator:
         for a in self.rules:
             self.rules[a] = [rule for rule in self.rules[a] if rule.text not in rules_text]
             
-    def evaluate(self, action):
-        name = action.name.split(" ")[0][1:]
-        return [rule.evaluate(action) for rule in  self.rules[name]]
+    def evaluate(self, action_name, arguments):
+        return [rule.evaluate(arguments) for rule in  self.rules[action_name]]
 
     def get_all_rules (self):
         return [rule.text for (schema, rules)  in self.rules.items() for rule in rules]

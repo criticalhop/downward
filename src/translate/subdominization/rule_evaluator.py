@@ -107,7 +107,7 @@ def evaluate_inigoal_rule(rule, fact_list):
 
         arguments = valid_arguments
         for fact in fact_list:
-            if fact.predicate == predicate_name and eval_constants(fact, constants): 
+            if type(fact) != pddl.Assign and fact.predicate == predicate_name and eval_constants(fact, constants): 
                 values = []
                 for a in arguments:
                     if len(set([fact.args[p] for p in positions_argument[a]])) > 1:
@@ -136,7 +136,7 @@ def get_free_variable_domains (constraints):
 
 class RuleEval:
     def __init__(self, rule_text, task):
-#         print("Loading: " + rule_text)
+        #print("Loading: " + rule_text)
         self.text = rule_text.replace('\n','')
         head, body = rule_text.split(":-")
         self.action_schema, action_arguments = head.split(" (")
@@ -145,7 +145,6 @@ class RuleEval:
         action_arguments = action_arguments.replace(")", "").replace("\n", "").replace(".", "").replace(" ", "").split(",")
 
         for rule in body.split(";"):
-#             print(rule)
             rule_type, rule = rule.split(":")
             rule_type = rule_type.strip()
 
@@ -167,7 +166,7 @@ class RuleEval:
             else:
                  print("Error: unknown rule ", rule_type, rule)
                  exit()
-
+            
             action_arguments_rule = tuple(map(lambda x : action_arguments.index(x),  filter(lambda x : x in action_arguments, arguments)))
             free_variables = tuple (filter(lambda x : x not in action_arguments, arguments))
 
@@ -179,6 +178,7 @@ class RuleEval:
                 self.constraints.append(FreeVariableConstraint(action_arguments_rule, free_variables, compliant_values))
 
         self.set_domain()
+
         while self.free_variable_domains:
                 self.eliminate_free_variable()
 
