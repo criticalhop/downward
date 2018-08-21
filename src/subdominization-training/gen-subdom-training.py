@@ -137,17 +137,18 @@ if __name__ == "__main__":
                     testing_lines [schema].append(new_line)
                 else:
                     training_lines [schema].append(new_line)
-
         
             
     for schema in training_lines:
         output_file = open('{}/{}.csv'.format(options.store_training_data, schema), 'w')
-        output_file.write("\n".join(training_lines[schema]))
+        for line in training_lines[schema]:
+            output_file.write(line + "\n")
         output_file.close()
 
     for schema in testing_lines:
         output_file = open('{}/test_{}.csv'.format(options.store_training_data, schema), 'w')
-        output_file.write("\n".join(testing_lines[schema]))
+        for line in testing_lines[schema]:
+            output_file.write(line + "\n")
         output_file.close()
 
                            

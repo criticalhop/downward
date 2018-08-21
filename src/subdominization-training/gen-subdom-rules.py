@@ -255,12 +255,14 @@ if __name__ == "__main__":
           rules = get_equality_rules (type_dict, a)
           predicate_combinations = list(get_predicate_combinations(predicates, constants, type_dict, a.parameters))
 
-          for i in range (2, options.rule_size+1):
+          i = 1
+          while True:
               new_rules = [rule for predcom in predicate_combinations for rule in predcom.get_rules(predicates_ini, predicates_goal) ]
               rules += new_rules
-              print ((i-1), len(new_rules))
+              print (i, len(new_rules))
 
-              if len(rules) > options.num_rules:
+              i += 1
+              if len(rules) > options.num_rules or i > options.rule_size:
                   break
 
               predicate_combinations = set([pre for p in predicate_combinations for pre in p.extend(predicates, constants, type_dict)])
