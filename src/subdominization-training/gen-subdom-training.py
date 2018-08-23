@@ -61,7 +61,7 @@ if __name__ == "__main__":
         shutil.rmtree(options.store_training_data)
 
         
-    relevant_rules = set()
+    relevant_rules = []
 
     operators_filename = options.op_file
 
@@ -99,10 +99,12 @@ if __name__ == "__main__":
 
         training_re.print_statistics()  
 
-        relevant_rules = training_re.get_relevant_rules()
+        relevant_rules = sorted(training_re.get_relevant_rules())
 
       
         print ("Relevant rules: ", len(relevant_rules))
+    else:
+        relevant_rules = sorted([l for l in options.training_rules.readlines()])
 
     if not os.path.exists(options.store_training_data):
         os.makedirs(options.store_training_data)
