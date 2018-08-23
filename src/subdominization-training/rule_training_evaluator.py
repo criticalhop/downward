@@ -66,5 +66,5 @@ class RuleTrainingEvaluator:
     def print_statistics(self):
         for schema, rs in self.rules.items():
             for r in rs:
-                print r.evaluation_result_count_0, r.evaluation_result_count_1, r.rules_text
+                print(r.evaluation_result_count_0, r.evaluation_result_count_1, r.rules_text)
 
