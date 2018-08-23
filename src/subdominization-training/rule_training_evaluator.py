@@ -8,11 +8,15 @@ class TrainingRule:
         self.rules = rules
         self.evaluation_result_count_0 = count0
         self.evaluation_result_count_1 = count1
+        self.single_rule_relevant = (len(self.rules_text) == 1) and self.evaluation_result_count_0 > 0 and self.evaluation_result_count_1 > 0
 
     def load(self, task):
-        self.rules = [RuleEval (l, task) for l in self.rules_text]
+        if not self.single_rule_relevant:
+            self.rules = [RuleEval (l, task) for l in self.rules_text]
 
     def evaluate(self,  arguments):
+        if self.single_rule_relevant:
+            return 0
         indexes_1 = [i for i, r in enumerate(self.rules) if r.evaluate(arguments) == 1]
         if len(indexes_1) == 0:
             self.evaluation_result_count_0 += 1
