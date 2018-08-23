@@ -3,6 +3,7 @@
 
 from collections import defaultdict
 import itertools
+import pddl
 
 def  valid_values(variables, values, variable_domains):
         assert (len (variables) == len(values))#, "Error: {} {}".format(str(variables), str(values)))
