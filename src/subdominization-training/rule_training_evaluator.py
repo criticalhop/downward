@@ -10,12 +10,14 @@ class TrainingRule:
         self.evaluation_result_count_1 = count1
         self.single_rule_relevant = (len(self.rules_text) == 1) and self.evaluation_result_count_0 > 0 and self.evaluation_result_count_1 > 0
 
-    def load(self, task):
-        if not self.single_rule_relevant:
+    def load(self, task, max_training_examples):
+        if not self.single_rule_relevant and self.evaluation_result_count_0 + self.evaluation_result_count_1 < max_training_examples :
             self.rules = [RuleEval (l, task) for l in self.rules_text]
+        else:
+            self.rules = None
 
     def evaluate(self,  arguments):
-        if self.single_rule_relevant:
+        if not self.rules:
             return 0
         indexes_1 = [i for i, r in enumerate(self.rules) if r.evaluate(arguments) == 1]
         if len(indexes_1) == 0:
@@ -48,10 +50,10 @@ class RuleTrainingEvaluator:
         for schema in rules_per_schema:
             self.rules[schema] = [TrainingRule(rules_per_schema[schema])]
             
-    def init_task (self, task):
+    def init_task (self, task, max_training_examples):
         for schema, rs in self.rules.items():
             for r in rs:
-                r.load(task)
+                r.load(task, max_training_examples)
             
     def evaluate(self, action):
         name, arguments = action.split("(")

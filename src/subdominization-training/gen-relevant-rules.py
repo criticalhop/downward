@@ -44,6 +44,7 @@ if __name__ == "__main__":
     argparser.add_argument("training_rules", type=argparse.FileType('r'), help="File that contains the rules used to generate training data by gen-subdominization-training")
     argparser.add_argument("output", type=argparse.FileType('w'), help="Output file")    
     argparser.add_argument("--instances-relevant-rules", type=int, help="Number of instances for relevant rules", default=1000)    
+    argparser.add_argument("--max-training-examples", type=int, help="Maximum number of training examples for action schema", default=1000000)    
     options = argparser.parse_args()
 
     training_lines = defaultdict(list)
@@ -68,7 +69,7 @@ if __name__ == "__main__":
         task_pddl = parse_pddl_file("task", task_filename)
         task = parsing_functions.parse_task(domain_pddl, task_pddl)
         
-        training_re.init_task(task)
+        training_re.init_task(task, options.max_training_examples)
 
         operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
 
