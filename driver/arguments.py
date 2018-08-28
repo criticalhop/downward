@@ -292,6 +292,14 @@ def parse_args():
     for component in COMPONENTS_PLUS_OVERALL:
         limits.add_argument("--{}-time-limit".format(component))
         limits.add_argument("--{}-memory-limit".format(component))
+        
+    grounding = parser.add_argument_group(
+        title="grounding options", description="TODO: options for grounding")
+    grounding.add_argument("--incremental-grounding", action="store_true", help="TODO")
+    grounding.add_argument("--incremental-grounding-search-time-limit", default=None, type=int, help="search time limit in seconds")
+    grounding.add_argument("--incremental-grounding-increment", default=None, type=int, help="increment in number of actions")
+    grounding.add_argument("--incremental-grounding-increment-percentage", default=None, type=int, help="increment in percentage of actions")
+    
 
     driver_other = parser.add_argument_group(
         title="other driver options")

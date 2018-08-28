@@ -7,6 +7,7 @@ import logging
 import os.path
 import subprocess
 import sys
+import re
 
 from . import call
 from . import limits
@@ -58,7 +59,7 @@ def get_executable(build, rel_path):
     return abs_path
 
 
-def run_translate(args):
+def run_translate(args, return_num_instantiated_actions = False):
     logging.info("Running translator.")
     time_limit = limits.get_time_limit(
         args.translate_time_limit, args.overall_time_limit)
@@ -68,11 +69,27 @@ def run_translate(args):
     assert sys.executable, "Path to interpreter could not be found"
     cmd = [sys.executable] + [translate] + args.translate_inputs + args.translate_options
 
-    stderr, returncode = call.get_error_output_and_returncode(
-        "translator",
-        cmd,
-        time_limit=time_limit,
-        memory_limit=memory_limit)
+    if (return_num_instantiated_actions):
+        stdout, stderr, returncode = call.get_output_and_returncode(
+            "translator",
+            cmd,
+            time_limit=time_limit,
+            memory_limit=memory_limit)
+        pattern = re.compile(r'^(\d+) actions instantiated')
+        number_actions_instantiated = -1
+        for line in stdout.splitlines():
+            l = line.decode("utf-8")
+            print(l, file=sys.stdout)
+            if (number_actions_instantiated == -1):
+                match = pattern.search(l)
+                if (match):
+                    number_actions_instantiated = int(match.group(1))
+    else:
+        stderr, returncode = call.get_error_output_and_returncode(
+            "translator",
+            cmd,
+            time_limit=time_limit,
+            memory_limit=memory_limit)
 
     # We collect stderr of the translator and print it here, unless
     # the translator ran out of memory and all output in stderr is
@@ -93,15 +110,15 @@ def run_translate(args):
         print(stderr, file=sys.stderr)
 
     if returncode == 0:
-        return (0, True)
+        return (0, True, number_actions_instantiated) if return_num_instantiated_actions else (0, True)
     elif returncode == 1:
         # Unlikely case that the translator crashed without raising an
         # exception.
-        return (returncodes.TRANSLATE_CRITICAL_ERROR, False)
+        return (returncodes.TRANSLATE_CRITICAL_ERROR, False, number_actions_instantiated) if return_num_instantiated_actions else (returncodes.TRANSLATE_CRITICAL_ERROR, False)
     else:
         # Pass on any other exit code, including in particular signals or
         # exit codes such as running out of memory or time.
-        return (returncode, False)
+        return (returncode, False, number_actions_instantiated) if return_num_instantiated_actions else (returncode, False)
 
 
 def run_search(args):
