@@ -12,6 +12,11 @@ import lisp_parser
 import shutil
 import bz2
 
+from sys import version_info
+
+
+is_python_3 = version_info[0] > 2 # test python version
+
 try:
     # Python 3.x
     from builtins import open as file_open
@@ -52,7 +57,10 @@ if __name__ == "__main__":
     options = argparser.parse_args()
 
     if os.path.exists(options.store_training_data):
-        result = raw_input('Output path "{}" already exists. Overwrite (y/n)?'.format(options.store_training_data))
+        if (is_python_3):
+            result = input('Output path "{}" already exists. Overwrite (y/n)?'.format(options.store_training_data))
+        else:
+            result = raw_input('Output path "{}" already exists. Overwrite (y/n)?'.format(options.store_training_data))
         if result.lower() not in ['y', 'yes']:
             exit()
         shutil.rmtree(options.store_training_data)
@@ -73,9 +81,9 @@ if __name__ == "__main__":
     domain_pddl = parse_pddl_file("domain", domain_filename)
     domain_name, domain_requirements, types, type_dict, constants, predicates, predicate_dict, functions, actions, axioms = parsing_functions.parse_domain_pddl(domain_pddl)
     predicates = [p for p in predicates if p.name != "="]
-    print(predicates)
     
-    for task_run in all_instances:        
+
+    for task_run in all_instances:
         print ("Processing ", task_run)
         domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
         task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
