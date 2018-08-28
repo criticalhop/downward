@@ -84,6 +84,36 @@ class GoalRelaxedReachablePlusPercentageCondition(TerminationCondition):
         elif (isinstance(atom.predicate, pddl.Action)):
             self.number_grounded_actions += 1
             
+class GoalRelaxedReachablePlusPercentageMinIncrementCondition(TerminationCondition):
+    def __init__(self, percentage_additional_actions, min_increment):
+        self.goal_reached = False
+        self.percentage_additional_actions = percentage_additional_actions
+        if (self.percentage_additional_actions < 0):
+           sys.exit("ERROR: percentage of additional actions must be >=0")
+        self.min_increment = min_increment
+        if (self.min_increment < 0):
+           sys.exit("ERROR: minimum increment must be >=0")
+        self.number_grounded_actions = 0
+    def print_info(self):
+        print("Grounding stopped if goal is relaxed reachable + at least "
+              "max(#RS * {percentage}, {min_inc}) + #RS actions "
+              "have been grounded, where \"#RS\" is the number of actions grounded "
+              "when the goal becomes relaxed reachable.".format( 
+                        percentage = (100 + self.percentage_additional_actions) / 100,
+                        min_inc = self.min_increment))
+    def terminate(self):
+        return self.goal_reached and self.num_additional_actions <= 0
+    def notify_atom(self, atom):
+        if (self.goal_reached):
+            if (isinstance(atom.predicate, pddl.Action)):
+                self.num_additional_actions -= 1
+        elif (isinstance(atom.predicate, str) and atom.predicate == "@goal-reachable"):
+            self.goal_reached = True
+            self.num_additional_actions = max(self.number_grounded_actions * self.percentage_additional_actions / 100, 
+                                              self.min_increment)
+        elif (isinstance(atom.predicate, pddl.Action)):
+            self.number_grounded_actions += 1
+            
 class GoalRelaxedReachableMinNumberPlusPercentageMaxIncrementCondition(TerminationCondition):
     def __init__(self, min_number_actions, percentage_additional_actions, max_increment):
         self.goal_reached = False
@@ -137,6 +167,23 @@ def get_termination_condition_from_options():
                 return GoalRelaxedReachablePlusPercentageCondition(int(args[2]))
             else:
                 sys.exit("ERROR: unknown option for goal-relaxed-reachable termination condition " + args[1])
+        else:
+            sys.exit("ERROR: unknown termination condition " + args[0])
+    elif (len(args) == 5):
+        if (args[0] == "goal-relaxed-reachable"):
+            percentage = -1
+            min_increment = -1
+            i = 1
+            while (i < len(args)):
+                if (args[i] == "percentage"):
+                    percentage = int(args[i+1])
+                    i += 2
+                elif (args[i] == "min-increment"):
+                    min_increment = int(args[i+1])
+                    i += 2
+                else:
+                    sys.exit("ERROR: unknown option for termination condition " + args[i])
+            return GoalRelaxedReachablePlusPercentageMinIncrementCondition(percentage, min_increment)
         else:
             sys.exit("ERROR: unknown termination condition " + args[0])
     elif (len(args) == 7):
