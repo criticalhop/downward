@@ -47,7 +47,7 @@ def main():
                 else:
                     new_limit = int(num_grounded_actions / increment) * increment
                     if (args.incremental_grounding_increment_percentage):
-                        inc = max(increment, int(num_grounded_actions * args.incremental_grounding_increment_percentage))
+                        inc = max(increment, int(num_grounded_actions * (args.incremental_grounding_increment_percentage - 1)))
                         if (inc == increment):
                             new_limit = int(num_grounded_actions / increment) * increment + increment
                         else:
