@@ -9,6 +9,7 @@ from . import arguments
 from . import cleanup
 from . import run_components
 from . import returncodes as rc
+from . import util
 
 
 def main():
@@ -40,6 +41,9 @@ def main():
         if (args.incremental_grounding_increment_percentage):
             args.incremental_grounding_increment_percentage = args.incremental_grounding_increment_percentage / 100 + 1
         while (True):
+            if (args.overall_time_limit and args.overall_time_limit - util.get_elapsed_time() <= 0):
+                print("incremental grounding ran out of time")
+                sys.exit(rc.TRANSLATE_OUT_OF_TIME)
             termination_condition = ["--termination-condition", "goal-relaxed-reachable"]
             if (num_grounded_actions != -1):
                 if (not args.incremental_grounding_increment and args.incremental_grounding_increment_percentage):
@@ -84,6 +88,7 @@ def main():
             (exitcode, continue_execution) = run_components.run_validate(args)
             print()
             print("validate exit code: {exitcode}".format(**locals()))
+        print("incremental grounding successfull after {time}s".format(time=util.get_elapsed_time()))
         sys.exit(exitcode)
     elif (args.incremental_grounding_search_time_limit or args.incremental_grounding_increment):
         sys.exit("ERROR: need to specify --incremental-grounding to use its special options.")
