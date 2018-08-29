@@ -69,7 +69,7 @@ def type_matches (type_dict, type1, type2):
 
           suptype = type_dict [t1].basetype_name
           if suptype:
-               return sub_type (suptype, type2)
+               return sub_type (suptype, t2)
           return False
      
      return sub_type (type1, type2) or sub_type (type2, type1)
