@@ -77,7 +77,13 @@ if __name__ == "__main__":
                           "% specify tree type:\n"
                           ":- set(tree_type,class_probability).\n"
                           ":- set(evalfn,gini). % only alternative when using class_probability is entropy\n"
-                          ":- set(classes,[ground,dont_ground]).\n\n")
+                          ":- set(classes,[ground,dont_ground]).\n"
+                          ":- set(minpos,2).    % minimum examples in leaf for splitting\n"
+                          ":- set(clauselength,5).\n"
+                          ":- set(lookahead,2).    % to allow lookahead to lteq/2\n"
+                          ":- set(prune_tree,true).\n"
+                          ":- set(confidence,0.25).% pruning conf parameter used by C4.5\n"
+                          ":- set(dependent,2).    % second arg of class/2 is to predicted\n\n")
 
     all_instances = sorted([d for d in os.listdir(options.runs_folder) if os.path.isfile('{}/{}/{}'.format(options.runs_folder, d, operators_filename))])
 
@@ -104,9 +110,9 @@ if __name__ == "__main__":
         params += "+task_id)"
         
         aleph_base_file_content.write(":- modeb(*, 'ini:" + predicate.name + "'" + params + ").\n")
-        determination_backgrounds.append("'ini:" + predicate.name + "'/" + str(len(predicate.arguments)))
+        determination_backgrounds.append("'ini:" + predicate.name + "'/" + str(len(predicate.arguments) + 1))
         aleph_base_file_content.write(":- modeb(*, 'goal:" + predicate.name + "'" + params + ").\n")
-        determination_backgrounds.append("'goal:" + predicate.name + "'/" + str(len(predicate.arguments)))
+        determination_backgrounds.append("'goal:" + predicate.name + "'/" + str(len(predicate.arguments) + 1))
         
     determination_backgrounds.append("equals/2")
         
@@ -203,9 +209,11 @@ if __name__ == "__main__":
             for bg in determination_backgrounds:
                 b_file.write(":- determination(class/2, " + bg + ").\n")
                 
+            b_file.write("\n")
+            b_file.write(aleph_fact_file_content.getvalue())
+                
                 
         with open(os.path.join(options.store_training_data, options.domain_name + "_" + schema.name + ".f"), "w") as f_file:
-            f_file.write(aleph_fact_file_content.getvalue())
             f_file.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
             f_file.write("% training data {s}:\n".format(s=schema.name))
             
