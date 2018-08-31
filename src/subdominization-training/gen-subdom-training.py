@@ -50,7 +50,9 @@ if __name__ == "__main__":
     argparser.add_argument("--debug-info", help="Include action name in the file", action="store_true")    
     argparser.add_argument("--instances-relevant-rules", type=int, help="Number of instances for relevant rules", default=0)    
     argparser.add_argument("--op-file", default="sas_plan", help="File to store the training data by gen-subdominization-training")    
-    argparser.add_argument("--num-test-instances", type=int,default=0, help="Number of instances reserved for the testing set")    
+    argparser.add_argument("--num-test-instances", type=int,default=0, help="Number of instances reserved for the testing set")
+    argparser.add_argument("--max-training-examples", type=int, help="Maximum number of training examples for action schema", default=1000000)    
+
 
     options = argparser.parse_args()
 
@@ -84,7 +86,7 @@ if __name__ == "__main__":
             task_pddl = parse_pddl_file("task", task_filename)
 
             task = parsing_functions.parse_task(domain_pddl, task_pddl)
-            training_re.init_task(task)        
+            training_re.init_task(task, options.max_training_examples)        
             # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
             
             all_operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
@@ -147,6 +149,12 @@ if __name__ == "__main__":
             # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
                 for action in actions:
                     schema, arguments = action.split("(")
+                    if not is_test_instance and len(training_lines[schema]) >= options.max_training_examples):
+                        continue
+                    if is_test_instance and len(testing_lines[schema]) >= options.max_training_examples):
+                        continue
+                    
+                    
                     arguments = map(lambda x: x.strip(), arguments.strip()[:-1].split(","))
                    
                     is_in_plan = 1 if  tuple([schema] + arguments) in plan else 0
