@@ -53,7 +53,8 @@ if __name__ == "__main__":
     argparser.add_argument("runs_folder", help="path to task pddl file")
     argparser.add_argument("store_training_data", help="Directory to store the training data by gen-subdominization-training")    
     argparser.add_argument("--op-file", default="sas_plan", help="File to store the training data by gen-subdominization-training")
-    argparser.add_argument("--domain-name", default="domain", help="name of the domain")    
+    argparser.add_argument("--domain-name", default="domain", help="name of the domain")
+    argparser.add_argument("--class-probability", action="store_true", help="write files for class probability")        
 
     options = argparser.parse_args()
 
@@ -73,17 +74,18 @@ if __name__ == "__main__":
         
     aleph_base_file_content = io.StringIO()
     
-    aleph_base_file_content.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-                          "% specify tree type:\n"
-                          ":- set(tree_type,class_probability).\n"
-                          ":- set(evalfn,gini). % only alternative when using class_probability is entropy\n"
-                          ":- set(classes,[ground,dont_ground]).\n"
-                          ":- set(minpos,2).    % minimum examples in leaf for splitting\n"
-                          ":- set(clauselength,5).\n"
-                          ":- set(lookahead,2).    % to allow lookahead to lteq/2\n"
-                          ":- set(prune_tree,true).\n"
-                          ":- set(confidence,0.25).% pruning conf parameter used by C4.5\n"
-                          ":- set(dependent,2).    % second arg of class/2 is to predicted\n\n")
+    if (options.class_probability):
+        aleph_base_file_content.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+                                      "% specify tree type:\n"
+                                      ":- set(tree_type,class_probability).\n"
+                                      #":- set(evalfn,entropy). % only alternative when using class_probability is gini\n"
+                                      ":- set(classes,[ground,dont_ground]).\n"
+                                      #":- set(minpos,2).    % minimum examples in leaf for splitting\n"
+                                      #":- set(clauselength,5).\n"
+                                      #":- set(lookahead,2).    % to allow lookahead to lteq/2\n"
+                                      #":- set(prune_tree,true).\n"
+                                      #":- set(confidence,0.25).% pruning conf parameter used by C4.5\n"
+                                      ":- set(dependent,DEPENDENT). % second arg of class is to predicted\n\n")
 
     all_instances = sorted([d for d in os.listdir(options.runs_folder) if os.path.isfile('{}/{}/{}'.format(options.runs_folder, d, operators_filename))])
 
@@ -93,39 +95,42 @@ if __name__ == "__main__":
     predicates = [p for p in predicates if p.name != "="]
     
     aleph_base_file_content.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
-                          "% modes:\n")
+                                  "% modes:\n")
     
     determination_backgrounds = []
+    
     for predicate in predicates:
-        params = "("
-        if (len(predicate.arguments) > 0):
-            params += "-'type:"
-            params += predicate.arguments[0].type_name
-            params += "'"
-            for arg in predicate.arguments[1:]:
-                params += ", -'type:"
-                params += arg.type_name
+        arity = len(predicate.arguments)
+        for i in range(arity):
+            params = "("
+            if (arity > 0):
+                params += "+'type:" if i == 0 else "-'type:" 
+                params += predicate.arguments[0].type_name
                 params += "'"
-            params += ", "
-        params += "+task_id)"
+                for j in range(1, arity):
+                    params += ", +'type:" if j == i else ", -'type:" 
+                    params += predicate.arguments[j].type_name
+                    params += "'"
+                params += ", "
+            params += "+task_id)"
+            
+            aleph_base_file_content.write(":- modeb(*, 'ini:{predicate.name}'{params}).\n".format(**locals()))    
+            aleph_base_file_content.write(":- modeb(*, 'goal:{predicate.name}'{params}).\n".format(**locals()))
+        determination_backgrounds.append("'ini:{name}'/{size}".format(name = predicate.name, size = arity + 1))
+        determination_backgrounds.append("'goal:{name}'/{size}".format(name = predicate.name, size = arity + 1))
         
-        aleph_base_file_content.write(":- modeb(*, 'ini:" + predicate.name + "'" + params + ").\n")
-        determination_backgrounds.append("'ini:" + predicate.name + "'/" + str(len(predicate.arguments) + 1))
-        aleph_base_file_content.write(":- modeb(*, 'goal:" + predicate.name + "'" + params + ").\n")
-        determination_backgrounds.append("'goal:" + predicate.name + "'/" + str(len(predicate.arguments) + 1))
-        
-    determination_backgrounds.append("equals/2")
+    determination_backgrounds.append("equals/3")
         
     aleph_base_file_content.write("\n")
     
-    for type in types:
-        aleph_base_file_content.write(":- modeb(*, equals(+'type:" + str(type) + "', +'type:" + str(type) + "')).\n")
+    aleph_base_file_content.write(":- modeb(*, equals(+'type:object', +'type:object', +task_id)).\n")
         
     aleph_base_file_content.write("\n")
     
     # handle the training instances
     good_operators = defaultdict(lambda : defaultdict(list))
     bad_operators = defaultdict(lambda : defaultdict(list))
+    objects = defaultdict(set)
     
     aleph_fact_file_content = io.StringIO()
     for task_run in all_instances:
@@ -140,35 +145,33 @@ if __name__ == "__main__":
         all_operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
             
         task = parsing_functions.parse_task(domain_pddl, task_pddl)
-        
-        objects = set()
 
         aleph_fact_file_content.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
-        aleph_fact_file_content.write("% init " + task_run + "\n")
+        aleph_fact_file_content.write("% init {task_run}\n".format(**locals()))
         for goal_fact in task.init:
             if (goal_fact.predicate == "="): # we have our own equality
                 continue
-            aleph_fact_file_content.write("'ini:" + goal_fact.predicate + "'(")
+            aleph_fact_file_content.write("'ini:{goal_fact.predicate}'(".format(**locals()))
             if (len(goal_fact.args) > 0):
-                aleph_fact_file_content.write("'obj:" + goal_fact.args[0] + "'")
+                aleph_fact_file_content.write("'obj:{goal_fact.args[0]}'".format(**locals()))
                 for arg in goal_fact.args[1:]:
-                    objects.add(arg)
+                    objects[task_run].add(arg)
                     aleph_fact_file_content.write(", 'obj:")
                     aleph_fact_file_content.write(arg)
                     aleph_fact_file_content.write("'")
                 aleph_fact_file_content.write(", ")
-            aleph_fact_file_content.write("'" + task_run + "').\n")
+            aleph_fact_file_content.write("'{task_run}').\n".format(**locals()))
             
         aleph_fact_file_content.write("\n")
         
         aleph_fact_file_content.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
         aleph_fact_file_content.write("% goal " + task_run + "\n")
         for goal_fact in task.goal.parts:
-            aleph_fact_file_content.write("'goal:" + goal_fact.predicate + "'(")
+            aleph_fact_file_content.write("'goal:{goal_fact.predicate}'(".format(**locals()))
             if (len(goal_fact.args) > 0):
-                aleph_fact_file_content.write("'obj:" + goal_fact.args[0] + "'")
+                aleph_fact_file_content.write("'obj:{goal_fact.args[0]}'".format(**locals()))
                 for arg in goal_fact.args[1:]:
-                    objects.add(arg)
+                    objects[task_run].add(arg)
                     aleph_fact_file_content.write(", 'obj:")
                     aleph_fact_file_content.write(arg)
                     aleph_fact_file_content.write("'")
@@ -195,22 +198,31 @@ if __name__ == "__main__":
     # write the actual files
     for schema in action_schemas:
         with open(os.path.join(options.store_training_data, options.domain_name + "_" + schema.name + ".b"), "w") as b_file:
-            b_file.write(aleph_base_file_content.getvalue())
-            params = "(+'type:" + schema.parameters[0].type_name + "'"
+            b_file.write(aleph_base_file_content.getvalue().replace("set(dependent,DEPENDENT)", "set(dependent,{D})".format(D=len(schema.parameters) + (2 if options.class_probability else 1))))
+            params = "+'type:{schema.parameters[0].type_name}'".format(**locals())
             for param in schema.parameters[1:]:
-                params += ", +'type:"
-                params += param.type_name
-                params += "'"
-            params += ", +task_id)"
-            b_file.write(":- modeh(1, class('" + schema.name + "'" + params + ", -class)).\n\n")
+                params += ", +'type:{param.type_name}'".format(**locals())
+            params += ", +task_id"
+            
+            if (options.class_probability):
+                b_file.write(":- modeh(1, class({params}, -class)).\n\n".format(**locals()))
+            else:
+                b_file.write(":- modeh(1, class({params})).\n\n".format(**locals()))
             
             b_file.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
             b_file.write("% determinations:\n")
             for bg in determination_backgrounds:
-                b_file.write(":- determination(class/2, " + bg + ").\n")
+                b_file.write(":- determination(class/{arity}, {pred}).\n".format(arity=len(schema.parameters) + (2 if options.class_probability else 1), pred=bg))
                 
             b_file.write("\n")
             b_file.write(aleph_fact_file_content.getvalue())
+            
+            for task in objects.keys():
+                b_file.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
+                b_file.write("% equals task {task}:\n".format(**locals()))
+                for obj in objects[task]:
+                    b_file.write("equals('obj:{obj}', 'obj:{obj}', '{task}').\n".format(**locals()))
+                b_file.write("\n")
                 
                 
         with open(os.path.join(options.store_training_data, options.domain_name + "_" + schema.name + ".f"), "w") as f_file:
@@ -219,16 +231,32 @@ if __name__ == "__main__":
             
             for task in set(good_operators.keys()).union(set(bad_operators.keys())):
                 for arguments in good_operators[task][schema.name]:
-                    f_file.write("class('" + schema.name + "'('obj:" + arguments[0] + "'")
+                    f_file.write("class('obj:{a}'".format(a=arguments[0]))
                     for arg in arguments[1:]:
-                        f_file.write(", 'obj:" + arg + "'")
-                    f_file.write(", " + task + "), ground).\n")
-                    
-                for arguments in bad_operators[task][schema.name]:
-                    f_file.write("class('" + schema.name + "'('obj:" + arguments[0] + "'")
-                    for arg in arguments[1:]:
-                        f_file.write(", 'obj:" + arg + "'")
-                    f_file.write(", " + task + "), dont_ground).\n")
+                        f_file.write(", 'obj:{arg}'".format(**locals()))
+                    if (options.class_probability):
+                        f_file.write(", '{task}', ground).\n".format(**locals()))
+                    else:
+                        f_file.write(", '{task}').\n".format(**locals()))
+                
+                if (options.class_probability):
+                    for arguments in bad_operators[task][schema.name]:
+                        f_file.write("class('obj:{a}'".format(a=arguments[0]))
+                        for arg in arguments[1:]:
+                            f_file.write(", 'obj:{arg}'".format(**locals()))
+                        f_file.write(", '{task}', dont_ground).\n".format(**locals()))
+        
+        if (not options.class_probability):
+            with open(os.path.join(options.store_training_data, options.domain_name + "_" + schema.name + ".n"), "w") as n_file:
+                n_file.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
+                n_file.write("% training data {s}:\n".format(s=schema.name))
+                for task in set(good_operators.keys()).union(set(bad_operators.keys())):
+                    for arguments in bad_operators[task][schema.name]:
+                        n_file.write("class('obj:{a}'".format(a=arguments[0]))
+                        for arg in arguments[1:]:
+                            n_file.write(", 'obj:{arg}'".format(**locals()))
+                        n_file.write(", '{task}').\n".format(**locals()))
+            
             
     aleph_base_file_content.close()
     aleph_fact_file_content.close()
