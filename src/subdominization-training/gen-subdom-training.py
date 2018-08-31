@@ -149,9 +149,9 @@ if __name__ == "__main__":
             # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
                 for action in actions:
                     schema, arguments = action.split("(")
-                    if not is_test_instance and len(training_lines[schema]) >= options.max_training_examples):
+                    if not is_test_instance and len(training_lines[schema]) >= options.max_training_examples:
                         continue
-                    if is_test_instance and len(testing_lines[schema]) >= options.max_training_examples):
+                    if is_test_instance and len(testing_lines[schema]) >= options.max_training_examples:
                         continue
                     
                     
