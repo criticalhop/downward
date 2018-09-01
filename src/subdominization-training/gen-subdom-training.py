@@ -141,17 +141,18 @@ if __name__ == "__main__":
         re = RulesEvaluator(relevant_rules, task)
 
         #relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
-
+        
         with open(plan_filename) as plan_file:
             plan = set(map (lambda x : tuple(x.replace("\n", "").replace(")", "").replace("(", "").split(" ")), plan_file.readlines()))
-            
+            skip_schemas_training = [schema for schema, examples in training_lines.items() if len(examples) >= options.max_training_examples]
+            skip_schemas_testing = [schema for schema, examples in testing_lines.items() if len(examples) >= options.max_training_examples]
             with bz2.BZ2File(all_operators_filename, "r") as actions:
             # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
                 for action in actions:
                     schema, arguments = action.split("(")
-                    if not is_test_instance and len(training_lines[schema]) >= options.max_training_examples:
+                    if not is_test_instance and schema in skip_schemas_training:
                         continue
-                    if is_test_instance and len(testing_lines[schema]) >= options.max_training_examples:
+                    if is_test_instance and schema in skip_schemas_testing:
                         continue
                     
                     
