@@ -4,6 +4,7 @@
 from collections import defaultdict
 import itertools
 import pddl
+from rule_evaluator import evaluate_inigoal_rule
 
 import re
 regexp_is_float = re.compile("\d.\d+")
@@ -11,40 +12,130 @@ def is_float(text):
     return regexp_is_float.match(text.strip())
 
 class AlephRule:
-    def __init__(self, rule_text, task):
+    def __init__(self, rule, task):
+        self.rule_text = rule
+        rule_type, rule = rule.split(":")
+        rule_type = rule_type.strip()
 
-        predicate = rule_text.
+        if rule_type == "ini":
+            arguments, compliant_values = evaluate_inigoal_rule (rule, task.init)                        
+        elif rule_type == "goal":
+            arguments, compliant_values = evaluate_inigoal_rule (rule, task.goal.parts)                
+        elif rule_type == "equal":
+            arguments = tuple(rule[1:rule.find(')')].split(", "))
+            compliant_values = set()
+            accepted_types = set()
+            action_schema = list(filter(lambda a : a.name == self.action_schema, task.actions))[0]
+            argument_types = set([p.type_name for p in action_schema.parameters if p.name in arguments])
+
+        self.action_arguments = []
+        self.input_free_variables = []
+        self.output_free_variables = []
+
+        input_pos_arg = {}
+        output_pos_arg = {}
 
 
+        for i, arg in enumerate(arguments):
+            if arg.startswith("?arg"):
+                arg_id = int(arg[4:])
+                self.action_arguments.append(arg_id)
+                input_pos_arg [arg_id] = i
+            else:
+                assert(arg.startswith("?fv"))
+                if arg.endswith("-io"):
+                    self.input_free_variables.append(arg[:-3])
+                    self.output_free_variables.append(arg[:-3])
+                    input_pos_arg[arg[:-3]] = i
+                    output_pos_arg[arg[:-3]] = i
+                elif arg.endswith("-o"):
+                    self.output_free_variables.append(arg[:-2])
+                    output_pos_arg[arg[:-2]] = i
+                else:
+                    assert(arg.endswith("-i"))
+                    self.input_free_variables.append(arg[:-2])
+                    input_pos_arg[arg[:-2]] = i
 
-        
-        self.action_arguments = action_arguments_rule
-        self.input_free_variables = free_variables
-        self.output_free_variables = free_variables
-        self.rule = dict()
+        if len(self.output_free_variables) > 0:
+            self.rule = defaultdict(list)
+            for cval in compliant_values:
+                query = tuple([cval[input_pos_arg[x]] for x in self.action_arguments + self.input_free_variables])
+                output_query = tuple([cval[output_pos_arg[x]] for x in self.output_free_variables])
+                
+                self.rule[query].append(output_query)
+        else:
+            self.rule = set()
+            for cval in compliant_values:
+                query = tuple([cval[input_pos_arg[x]] for x in self.action_arguments + self.input_free_variables])
+                self.rule.add(query)
+        # print("XXX", rule, self.action_arguments, self.input_free_variables, self.output_free_variables, self.rule)
+
+
 
     def evaluate(self, action_arguments, free_variable_inputs):
-        query = tuple([action_arguments[x] for x in self.action_arguments] + [free_variable_inputs[x] for x in self.input_free_variables])
-        if query not in self.rule:
-            return None
+        if free_variable_inputs:
+            free_variable_inputs_variables, free_variable_inputs_values = free_variable_inputs
+            copy_variables = [var for var in free_variable_inputs_variables if var not in self.input_free_variables]
+            copy_values = [free_variable_inputs_variables.index(x) for x in copy_variables]
         else:
-            return self.rule(query)
+            copy_values = []
+            
+        if not self.input_free_variables:
+            query = tuple([action_arguments[x] for x in self.action_arguments])
+            if len(self.output_free_variables) == 0:
+                result = True if query in self.rule else False
+                if result and free_variable_inputs:
+                    result = free_variable_inputs
+            else:
+                if query not in self.rule:
+                    result = False
+                elif copy_values:
+                    print ("Not supported", self.rule_text, free_variable_inputs)
+                    exit()
+                    result = (output_vars, [values[i] for i in copy_values] + self.rule[query])
+                else:
+                    return (self.output_free_variables, self.rule[query])
+            return result
+        else:
+            output_vars = [var for var in free_variable_inputs_variables if var not in self.input_free_variables] + self.output_free_variables
+            output_values = []
+            pos_input_free_variables = [free_variable_inputs_variables.index(x) for x in self.input_free_variables]
+            for values in free_variable_inputs_values:
+                query = tuple([action_arguments[x] for x in self.action_arguments] + [values[x] for x in pos_input_free_variables])
+                if len(self.output_free_variables) == 0:
+                    if query in self.rule:
+                        if copy_values:
+                            output_values.append([values[i] for i in copy_values])
+                        else:
+                            return True
+                else:
+                    if query in self.rule:
+                        output_val = [values[i] for i in copy_values] + self.rule[query] 
+                        output_values.append(output_val)
+            return (output_vars, output_values)
+
+
+
+
     
 class AlephRuleTree:
-    def __init__(self, text):
-        text_rule, text_false = text.split(";")[0].split(" ")
+    def __init__(self, text, task):
+        text_rule, text_false = text.split(";")[0].strip().split(" ")
         text_true = ";".join(text.split(";")[1:])
         
-        self.rule = AlephRule (text_rule)
-        self.case_true = AlephRuleConstant(text_true) if is_float(text_true) else AlephRuleTree(text_true)
-        self.case_false = AlephRuleConstant(text_false) if is_float(text_false) else AlephRuleTree(text_false)
+        self.rule = AlephRule (text_rule, task)
+        self.case_true = AlephRuleConstant(text_true) if is_float(text_true) else AlephRuleTree(text_true, task)
+        self.case_false = AlephRuleConstant(text_false) if is_float(text_false) else AlephRuleTree(text_false, task)
         
-    def evaluate(self, action_arguments, free_variable_values):
+    def evaluate(self, action_arguments, free_variable_values = {}):
         eval_rule = self.rule.evaluate(action_arguments, free_variable_values)
         if eval_rule:
-            return self.rule.evaluate(action_arguments, eval_rule)
+            if type(eval_rule) != bool:
+                return self.case_true.evaluate(action_arguments, eval_rule)
+            else:
+                return self.case_true.evaluate(action_arguments, None)
         else:
-            return self.rule.evaluate(action_arguments, free_variable_values)
+            return self.case_false.evaluate(action_arguments, free_variable_values)
         
         return (self.value)
     
@@ -55,22 +146,17 @@ class AlephRuleConstant:
     def evaluate(self, action_arguments, free_variables_inputs):
         return (self.value)
 
-        
-
-
 class RuleEvaluatorAleph:
     def __init__(self, rule_text, task):
         self.rules = {}
         for l in rule_text:
-            action_schema = l.split(" ")[0]
-            self.rules[action_schema].append(AlephRuleList(l))
+            action_schema, rule = l.split(":-")
+            self.rules[action_schema.strip()] = AlephRuleTree(rule, task)
             
     def get_estimate(self, action):
-        return self.rules[action.predicate.name].evaluate(action)
+        value = self.rules[action.predicate.name].evaluate(action.args)
+        print (action, value)
+        return value
 
-
-""""
-
-move-b-to-b(a0,a1,a2) :- ini:on(a0,a1) 0.00774327660127322; equals(a2,a2) 0.508; goal:on(a0,a2) 0.108601216333623; ini:on(a0,a2) 0.50609756097561; 0.0294117647058824
-
-""""
+    def print_stats(self):
+        pass
