@@ -58,6 +58,9 @@ def parse_args():
         "--trained-model-folder", type=str,
         help="The folder that should contain the trained model and relevant files if 'trained' is used as queue ordering")
     argparser.add_argument(
+        "--aleph-model-file", type=str,
+        help="The file that contains the model trained by aleph. 'aleph' has to be used as --grounding-action-queue-ordering")
+    argparser.add_argument(
         "--termination-condition", type=str, default=["default"], nargs="+", # at least one argument must be given
         help="the termination condition, which may be followed by additional arguments used by the respective condition")
 
