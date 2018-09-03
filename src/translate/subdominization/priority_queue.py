@@ -114,7 +114,7 @@ class TrainedQueue(PriorityQueue):
     def __init__(self, task):
         from subdominization.model import TrainedModel
         if (not options.trained_model_folder):
-            sys.exit("Error: need trained model to use this queue. Please specify using --trained-mode-folder")
+            sys.exit("Error: need trained model to use this queue. Please specify using --trained-model-folder")
         if (not task):
             sys.exit("Error: no task given")
         self.queue = SortedHeapQueue()
@@ -152,6 +152,23 @@ class TrainedQueue(PriorityQueue):
 #         heapq.heappush(self.sorted_closed, (result[0], self.pop_count, result[1]))
 #         self.pop_count += 1
         return action
+    
+class AlephQueue(TrainedQueue):
+    def __init__(self, task):
+        from subdominization.rule_evaluator_aleph import RuleEvaluatorAleph
+        if (not options.aleph_model_file):
+            sys.exit("Error: need trained model to use this queue. Please specify using --aleph-model-file")
+        if (not task):
+            sys.exit("Error: no task given")
+        self.queue = SortedHeapQueue()
+        self.closed = []
+        timer = timers.Timer()
+        with open(options.aleph_model_file, "r") as aleph_rules:
+            self.model = RuleEvaluatorAleph(aleph_rules.readlines(), task)
+        self.loading_time = str(timer)
+    def print_info(self):
+        print("Using heap priority queue with a trained aleph model for actions.")
+        print("Loaded trained model from", options.aleph_model_file, self.loading_time)
     
 class SchemaRoundRobinQueue(PriorityQueue):
     def __init__(self):
@@ -355,6 +372,28 @@ class RoundRobinTrainedQueue(PriorityQueue):
                 action = self.queues[self.current].pop()
                 self.closed.append(action)
                 return action
+            
+class RoundRobinAlephQueue(RoundRobinTrainedQueue):
+    def __init__(self, task):
+        from subdominization.rule_evaluator_aleph import RuleEvaluatorAleph
+        if (not options.aleph_model_file):
+            sys.exit("Error: need trained model to use this queue. Please specify using --aleph-model-file")
+        if (not task):
+            sys.exit("Error: no task given")
+        timer = timers.Timer()
+        with open(options.aleph_model_file, "r") as aleph_rules:
+            self.model = RuleEvaluatorAleph(aleph_rules.readlines(), task)
+        self.loading_time = str(timer)
+        self.schemas = []
+        self.current = 0
+        self.queues = []
+        self.num_grounded_actions = []
+        self.closed = []
+    def print_info(self):
+        print("Using trained round-robin aleph priority queue for actions.")
+        print("Loaded trained model from", options.trained_model_folder, self.loading_time)
+
+
     
 def get_action_queue_from_options(task = None):
     name = options.grounding_action_queue_ordering.lower()
@@ -370,6 +409,10 @@ def get_action_queue_from_options(task = None):
         return TrainedQueue(task)
     elif (name == "roundrobintrained"):
         return RoundRobinTrainedQueue(task)
+    elif (name == "aleph"):
+        return AlephQueue(task)
+    elif (name == "roundrobinaleph"):
+        return RoundRobinAlephQueue(task)
     elif (name == "roundrobin"):
         return SchemaRoundRobinQueue()
     elif (name == "noveltyfifo"):

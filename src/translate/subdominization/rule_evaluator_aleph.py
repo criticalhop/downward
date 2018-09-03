@@ -65,7 +65,7 @@ class RuleEvaluatorAleph:
             action_schema = l.split(" ")[0]
             self.rules[action_schema].append(AlephRuleList(l))
             
-    def evaluate(self, action):
+    def get_estimate(self, action):
         return self.rules[action.predicate.name].evaluate(action)
 
 
