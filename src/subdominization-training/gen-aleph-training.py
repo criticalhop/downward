@@ -12,6 +12,7 @@ from rule_training_evaluator import *
 import lisp_parser
 import shutil
 import bz2
+import string
 
 from sys import version_info
 
@@ -54,7 +55,9 @@ if __name__ == "__main__":
     argparser.add_argument("store_training_data", help="Directory to store the training data by gen-subdominization-training")    
     argparser.add_argument("--op-file", default="sas_plan", help="File to store the training data by gen-subdominization-training")
     argparser.add_argument("--domain-name", default="domain", help="name of the domain")
-    argparser.add_argument("--class-probability", action="store_true", help="write files for class probability")        
+    argparser.add_argument("--class-probability", action="store_true", help="write files for class probability")
+    argparser.add_argument("--add-negated-predicates", action="store_true", help="add negation to model")
+    argparser.add_argument("--add-equal-predicate", action="store_true", help="add new equal predicate")
 
     options = argparser.parse_args()
 
@@ -116,8 +119,14 @@ if __name__ == "__main__":
             
             aleph_base_file_content.write(":- modeb(*, 'ini:{predicate.name}'{params}).\n".format(**locals()))    
             aleph_base_file_content.write(":- modeb(*, 'goal:{predicate.name}'{params}).\n".format(**locals()))
+            if (options.add_negated_predicates):
+                aleph_base_file_content.write(":- modeb(*, 'ini:not:{predicate.name}'{params}).\n".format(**locals()))    
+                aleph_base_file_content.write(":- modeb(*, 'goal:not:{predicate.name}'{params}).\n".format(**locals()))
         determination_backgrounds.append("'ini:{name}'/{size}".format(name = predicate.name, size = arity + 1))
         determination_backgrounds.append("'goal:{name}'/{size}".format(name = predicate.name, size = arity + 1))
+        if (options.add_negated_predicates):
+            determination_backgrounds.append("'ini:not:{name}'/{size}".format(name = predicate.name, size = arity + 1))
+            determination_backgrounds.append("'goal:not:{name}'/{size}".format(name = predicate.name, size = arity + 1))
         
     determination_backgrounds.append("equals/3")
         
@@ -148,13 +157,14 @@ if __name__ == "__main__":
 
         aleph_fact_file_content.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
         aleph_fact_file_content.write("% init {task_run}\n".format(**locals()))
-        for goal_fact in task.init:
-            if (goal_fact.predicate == "="): # we have our own equality
+        for ini_fact in task.init:
+            if (ini_fact.predicate == "="): # we have our own equality
                 continue
-            aleph_fact_file_content.write("'ini:{goal_fact.predicate}'(".format(**locals()))
-            if (len(goal_fact.args) > 0):
-                aleph_fact_file_content.write("'obj:{goal_fact.args[0]}'".format(**locals()))
-                for arg in goal_fact.args[1:]:
+            aleph_fact_file_content.write("'ini:{ini_fact.predicate}'(".format(**locals()))
+            if (len(ini_fact.args) > 0):
+                aleph_fact_file_content.write("'obj:{ini_fact.args[0]}'".format(**locals()))
+                objects[task_run].add(ini_fact.args[0])
+                for arg in ini_fact.args[1:]:
                     objects[task_run].add(arg)
                     aleph_fact_file_content.write(", 'obj:")
                     aleph_fact_file_content.write(arg)
@@ -170,6 +180,7 @@ if __name__ == "__main__":
             aleph_fact_file_content.write("'goal:{goal_fact.predicate}'(".format(**locals()))
             if (len(goal_fact.args) > 0):
                 aleph_fact_file_content.write("'obj:{goal_fact.args[0]}'".format(**locals()))
+                objects[task_run].add(goal_fact.args[0])
                 for arg in goal_fact.args[1:]:
                     objects[task_run].add(arg)
                     aleph_fact_file_content.write(", 'obj:")
@@ -215,14 +226,48 @@ if __name__ == "__main__":
                 b_file.write(":- determination(class/{arity}, {pred}).\n".format(arity=len(schema.parameters) + (2 if options.class_probability else 1), pred=bg))
                 
             b_file.write("\n")
-            b_file.write(aleph_fact_file_content.getvalue())
             
-            for task in objects.keys():
+            if (options.add_negated_predicates):
                 b_file.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
-                b_file.write("% equals task {task}:\n".format(**locals()))
-                for obj in objects[task]:
-                    b_file.write("equals('obj:{obj}', 'obj:{obj}', '{task}').\n".format(**locals()))
+                b_file.write("% negated predicates:\n")
+                for predicate in predicates:
+                    if (len(predicate.arguments) > 26):
+                        sys.exit("lazy programmer ERROR")
+                    args = [x for x in string.ascii_uppercase[:len(predicate.arguments)]]
+                    args_string = args[0]
+                    for arg in args[1:]:
+                        args_string += ", " + arg
+                    b_file.write("'ini:not:{predicate.name}'({args_string}, task):- ".format(**locals()))
+                    b_file.write("obj({args[0]}, task)".format(**locals()))
+                    for arg in args[1:]:
+                        b_file.write(", obj({arg}, task)".format(**locals()))
+                    b_file.write(", not('ini:{predicate.name}'({args_string}, task)).\n".format(**locals()))
+                    b_file.write("'goal:not:{predicate.name}'({args_string}, task):- ".format(**locals()))
+                    b_file.write("obj({args[0]}, task)".format(**locals()))
+                    for arg in args[1:]:
+                        b_file.write(", obj({arg}, task)".format(**locals()))
+                    b_file.write(", not('goal:{predicate.name}'({args_string}, task)).\n".format(**locals()))
+                
                 b_file.write("\n")
+                
+                for task in objects.keys():
+                    b_file.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
+                    b_file.write("% all objects of task {task}:\n".format(**locals()))
+                    for obj in objects[task]:
+                        b_file.write("obj('{obj}', '{task}').\n".format(**locals()))
+                    b_file.write("\n")
+                    
+            if (options.add_equal_predicate):                
+                for task in objects.keys():
+                    b_file.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
+                    b_file.write("% equals task {task}:\n".format(**locals()))
+                    for obj in objects[task]:
+                        b_file.write("equals('obj:{obj}', 'obj:{obj}', '{task}').\n".format(**locals()))
+                    b_file.write("\n")
+                
+                b_file.write("\n")
+                
+            b_file.write(aleph_fact_file_content.getvalue())
                 
                 
         with open(os.path.join(options.store_training_data, options.domain_name + "_" + schema.name + ".f"), "w") as f_file:
