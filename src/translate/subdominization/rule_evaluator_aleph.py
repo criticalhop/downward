@@ -118,14 +118,18 @@ class AlephRule:
 
 
     
+
+def construct_aleph_tree(text, task):
+    return AlephRuleConstant(text) if is_float(text) else AlephRuleTree(text, task)
+
 class AlephRuleTree:
     def __init__(self, text, task):
         text_rule, text_false = text.split(";")[0].strip().split(" ")
         text_true = ";".join(text.split(";")[1:])
         
         self.rule = AlephRule (text_rule, task)
-        self.case_true = AlephRuleConstant(text_true) if is_float(text_true) else AlephRuleTree(text_true, task)
-        self.case_false = AlephRuleConstant(text_false) if is_float(text_false) else AlephRuleTree(text_false, task)
+        self.case_true = construct_aleph_tree(text_true, task)
+        self.case_false = construct_aleph_tree(text_false, task)
         
     def evaluate(self, action_arguments, free_variable_values = {}):
         eval_rule = self.rule.evaluate(action_arguments, free_variable_values)
@@ -143,7 +147,7 @@ class AlephRuleConstant:
     def __init__(self, text):
         self.value = float(text)
         
-    def evaluate(self, action_arguments, free_variables_inputs):
+    def evaluate(self, action_arguments, free_variables_inputs = None):
         return (self.value)
 
 class RuleEvaluatorAleph:
@@ -151,11 +155,11 @@ class RuleEvaluatorAleph:
         self.rules = {}
         for l in rule_text:
             action_schema, rule = l.split(":-")
-            self.rules[action_schema.strip()] = AlephRuleTree(rule, task)
+            self.rules[action_schema.strip()] = construct_aleph_tree(rule, task)
             
     def get_estimate(self, action):
         value = self.rules[action.predicate.name].evaluate(action.args)
-        print (action, value)
+        #print (action, value)
         return value
 
     def print_stats(self):
