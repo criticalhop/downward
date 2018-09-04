@@ -4,12 +4,45 @@
 from collections import defaultdict
 import itertools
 import pddl
-from rule_evaluator import evaluate_inigoal_rule
 
 import re
 regexp_is_float = re.compile("\d.\d+")
 def is_float(text):
     return regexp_is_float.match(text.strip())
+
+
+
+def evaluate_inigoal_rule(rule, fact_list):
+        def eval_constants(fact, constants):
+            for (i, val) in constants:
+                if fact.args[i] != val:
+                    return False
+            return True
+        compliant_values = set()
+            
+        predicate_name, arguments  = rule.split("(")
+        arguments = arguments.replace(")", "").replace("\n", "").replace(".", "").replace(" ", "").split(",")
+        valid_arguments = tuple(set([a for a in arguments if a.startswith("?")]))
+        constants = [(i, val) for (i, val) in enumerate(arguments) if val != "_" and not val.startswith("?")]
+        positions_argument = {}
+        
+        for a in valid_arguments:
+            positions_argument[a] = [i for (i, v) in enumerate(arguments) if v == a]
+
+        arguments = valid_arguments
+        for fact in fact_list:
+            if type(fact) != pddl.Assign and fact.predicate == predicate_name and eval_constants(fact, constants): 
+                values = []
+                for a in arguments:
+                    if len(set([fact.args[p] for p in positions_argument[a]])) > 1:
+                        break
+                    values.append(fact.args[positions_argument[a][0]])
+
+                if len(values) == len(arguments):
+                    compliant_values.add(tuple(values))
+                    
+        return arguments, compliant_values
+
 
 class AlephRule:
     def __init__(self, rule, task):
