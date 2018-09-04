@@ -8,7 +8,7 @@ argparser.add_argument("domain", help="Directory to store the training data by g
 
 options = argparser.parse_args()
 
-training_dir = '/home/alvaro/projects/subdominization/subdominization_data/{}/training-data-aleph/class-probability-negation/'.format(options.domain)
+training_dir = '/home/alvaro/projects/subdominization/subdominization_data/{}/training-data-aleph/class-probability/'.format(options.domain)
 
 if not os.path.exists(training_dir):
     print ("Directory not found: ", training_dir)
@@ -32,7 +32,7 @@ for filename in  os.listdir(training_dir):
         :- induce_tree.
         """.format(**locals())
 
-        filename_exec = 'aleph/negation-learn-aleph-{}'.format(filename[:-2])
+        filename_exec = 'aleph/learn-aleph-{}'.format(filename[:-2])
 
         f = open(filename_exec, 'w')
         f.write(yap_content)

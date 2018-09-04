@@ -86,17 +86,17 @@ for schema in os.listdir(options.directory):
             new_args = []
             for arg in args.split(","):
                 if arg in class_args:
-                    new_args.append("arg{}".format(class_args.index(arg)))
+                    new_args.append("?arg{}".format(class_args.index(arg)))
                 else:
                     (id_arg, first_time, last_time) = free_vars_args[arg]
                     if first_time == last_time:
                         name_arg = "_"
                     elif i == last_time:
-                        name_arg = "fvi{}".format(id_arg)
+                        name_arg = "?fv{}-i".format(id_arg)
                     elif i == first_time:
-                        name_arg = "fvo{}".format(id_arg)
+                        name_arg = "?fv{}-o".format(id_arg)
                     else:
-                        name_arg = "fvio{}".format(id_arg)
+                        name_arg = "?fv{}-io".format(id_arg)
 
                     new_args.append(name_arg)
 
@@ -105,7 +105,7 @@ for schema in os.listdir(options.directory):
         new_r = ",".join(new_predicates)
         new_rule_tuples.append((new_r, g))
                     
-    print(schema + "(" +  ",".join(class_args) +   ")  " + "; ".join(["{} {:f}".format(x[0], x[1]) for x in new_rule_tuples]))
+    print(schema + " :- " + "; ".join(["{} {:f}".format(x[0], x[1]) for x in new_rule_tuples]))
     
 
     
