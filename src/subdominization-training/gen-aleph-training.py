@@ -55,7 +55,7 @@ if __name__ == "__main__":
     argparser.add_argument("store_training_data", help="Directory to store the training data by gen-subdominization-training")    
     argparser.add_argument("--op-file", default="sas_plan", help="File to store the training data by gen-subdominization-training")
     argparser.add_argument("--domain-name", default="domain", help="name of the domain")
-    argparser.add_argument("--class-probability", action="store_true", help="write files for class probability")
+    argparser.add_argument("--class-probability", action="store_true", help="write files for class probability, otherwise good/bad files for actions")
     argparser.add_argument("--add-negated-predicates", action="store_true", help="add negation to model")
     argparser.add_argument("--add-equal-predicate", action="store_true", help="add new equal predicate")
 
@@ -127,12 +127,11 @@ if __name__ == "__main__":
         if (options.add_negated_predicates):
             determination_backgrounds.append("'ini:not:{name}'/{size}".format(name = predicate.name, size = arity + 1))
             determination_backgrounds.append("'goal:not:{name}'/{size}".format(name = predicate.name, size = arity + 1))
-        
-    determination_backgrounds.append("equals/3")
-        
-    aleph_base_file_content.write("\n")
     
-    aleph_base_file_content.write(":- modeb(*, equals(+'type:object', +'type:object', +task_id)).\n")
+    if (options.add_equal_predicate):
+        determination_backgrounds.append("equals/3")
+        aleph_base_file_content.write("\n")
+        aleph_base_file_content.write(":- modeb(*, equals(+'type:object', +'type:object', +task_id)).\n")
         
     aleph_base_file_content.write("\n")
     
