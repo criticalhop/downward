@@ -157,7 +157,7 @@ if __name__ == "__main__":
         aleph_fact_file_content.write("%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
         aleph_fact_file_content.write("% init {task_run}\n".format(**locals()))
         for ini_fact in task.init:
-            if (ini_fact.predicate == "="): # we have our own equality
+            if (type(ini_fact) == pddl.Assign or ini_fact.predicate == "="): # we have our own equality
                 continue
             aleph_fact_file_content.write("'ini:{ini_fact.predicate}'(".format(**locals()))
             if (len(ini_fact.args) > 0):
