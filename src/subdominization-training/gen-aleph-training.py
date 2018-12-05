@@ -91,6 +91,10 @@ if __name__ == "__main__":
                                       ":- set(dependent,DEPENDENT). % second arg of class is to predicted\n\n")
 
     all_instances = sorted([d for d in os.listdir(options.runs_folder) if os.path.isfile('{}/{}/{}'.format(options.runs_folder, d, operators_filename))])
+    
+    # TODO split into training and validation set
+#     np.random.seed(2018)
+#     testing_instances = np.random.choice(all_instances, int(options.num_test_instances), replace=False)
 
     domain_filename = '{}/{}/{}'.format(options.runs_folder, all_instances[0], "domain.pddl")
     domain_pddl = parse_pddl_file("domain", domain_filename)
