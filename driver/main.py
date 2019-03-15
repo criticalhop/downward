@@ -60,7 +60,7 @@ def main():
                         new_limit = int(num_grounded_actions / increment) * increment + increment
                 termination_condition += ["min-number", str(new_limit)]
             elif (args.incremental_grounding_minimum):
-                termination_condition += ["min-number", str(args.incremental_grounding_minimum)]
+                termination_condition += ["min-number", str(args.incremental_grounding_minimum), "percentage", "10", "max-increment", "20000"]# TODO make this an option
             args.translate_options = old_translate_options + termination_condition
             
             (exitcode, continue_execution, num_grounded_actions) = run_components.run_translate(args, True)
