@@ -298,6 +298,7 @@ def parse_args():
     grounding.add_argument("--incremental-grounding", action="store_true", help="TODO")
     grounding.add_argument("--incremental-grounding-search-time-limit", default=None, type=int, help="search time limit in seconds")
     grounding.add_argument("--incremental-grounding-increment", default=None, type=int, help="increment in number of actions")
+    grounding.add_argument("--incremental-grounding-minimum", default=None, type=int, help="minimum number of actions to ground in first iteration")
     grounding.add_argument("--incremental-grounding-increment-percentage", default=None, type=int, help="increment in percentage of actions")
     
 
