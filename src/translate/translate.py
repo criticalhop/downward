@@ -87,10 +87,6 @@ def translate_strips_conditions_aux(conditions, dictionary, ranges):
                 return None
             condition[var] = {val}
 
-    def number_of_values(var_vals_pair):
-        var, vals = var_vals_pair
-        return len(vals)
-
     for fact in conditions:
         if fact.negated:
             ## Note: here we use a different solution than in Sec. 10.6.4
@@ -115,14 +111,14 @@ def translate_strips_conditions_aux(conditions, dictionary, ranges):
                 poss_vals.remove(val)
 
                 if condition.get(var) is None:
-                    assert new_condition.get(var) is None
+                    # assert new_condition.get(var) is None
                     new_condition[var] = poss_vals
                 else:
                     # constrain existing condition on var
                     prev_possible_vals = condition.get(var)
                     done = True
                     prev_possible_vals.intersection_update(poss_vals)
-                    if len(prev_possible_vals) == 0:
+                    if not prev_possible_vals:
                         # Conflicting conditions on this variable:
                         # Operator invalid.
                         return None
@@ -133,28 +129,28 @@ def translate_strips_conditions_aux(conditions, dictionary, ranges):
                 # this atom. So we need to introduce a new condition:
                 # We can select any from new_condition and currently prefer the
                 # smallest one.
-                candidates = sorted(new_condition.items(), key=number_of_values)
+                candidates = sorted(new_condition.items(), \
+                            key=lambda var_vals_pair: len(var_vals_pair[1]))
                 var, vals = candidates[0]
                 condition[var] = vals
 
-        def multiply_out(condition):  # destroys the input
-            sorted_conds = sorted(condition.items(), key=number_of_values)
-            flat_conds = [{}]
-            for var, vals in sorted_conds:
-                if len(vals) == 1:
-                    for cond in flat_conds:
-                        cond[var] = vals.pop()  # destroys the input here
-                else:
-                    new_conds = []
-                    for cond in flat_conds:
-                        for val in vals:
-                            new_cond = deepcopy(cond)
-                            new_cond[var] = val
-                            new_conds.append(new_cond)
-                    flat_conds = new_conds
-            return flat_conds
-
-    return multiply_out(condition)
+    # multiply_out - destroys the input
+    sorted_conds = sorted(condition.items(), 
+                    key=lambda var_vals_pair: len(var_vals_pair[1]))
+    flat_conds = [{}]
+    for var, vals in sorted_conds:
+        if len(vals) == 1:
+            for cond in flat_conds:
+                cond[var] = vals.pop()  # destroys the input here
+        else:
+            new_conds = []
+            for cond in flat_conds:
+                for val in vals:
+                    new_cond = deepcopy(cond)
+                    new_cond[var] = val
+                    new_conds.append(new_cond)
+            flat_conds = new_conds
+    return flat_conds
 
 
 def translate_strips_conditions(conditions, dictionary, ranges,

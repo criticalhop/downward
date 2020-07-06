@@ -38,6 +38,8 @@ protected:
     OperatorID current_operator_id;
     int current_g;
     int current_real_g;
+    int successor_count;
+    int successor_cost;
     EvaluationContext current_eval_context;
 
     virtual void initialize() override;
