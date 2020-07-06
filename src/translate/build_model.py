@@ -3,6 +3,7 @@
 
 import sys
 import itertools
+import options
 
 import pddl
 import timers
@@ -309,6 +310,11 @@ def compute_model(prog):
         relevant_atoms = 0
         auxiliary_atoms = 0
         while queue:
+            if options.total_queue_pushes > 0 and queue.num_pushes > options.total_queue_pushes:
+                print("%d > %d total queue pushes raise" % (queue.num_pushes, options.total_queue_pushes))
+                ## For a full list of exit codes, please see driver/returncodes.py.
+                OUT_OF_TOTAL_QUEUE_PUSHES = 150
+                sys.exit(OUT_OF_TOTAL_QUEUE_PUSHES)
             next_atom = queue.pop()
             pred = next_atom.predicate
             if isinstance(pred, str) and "$" in pred:
