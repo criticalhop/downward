@@ -30,6 +30,8 @@ LazySearch::LazySearch(const Options &opts)
       current_operator_id(OperatorID::no_operator),
       current_g(0),
       current_real_g(0),
+      successor_count(0),
+      successor_cost(0),
       current_eval_context(current_state, 0, true, &statistics) {
     /*
       We initialize current_eval_context in such a way that the initial node
@@ -102,10 +104,16 @@ void LazySearch::generate_successors() {
 
     statistics.inc_generated(successor_operators.size());
 
+    successor_count = 0;
+    successor_cost = 0;
+
     for (OperatorID op_id : successor_operators) {
+        successor_count ++;
         OperatorProxy op = task_proxy.get_operators()[op_id];
         int new_g = current_g + get_adjusted_cost(op);
-        int new_real_g = current_real_g + op.get_cost();
+        successor_cost = op.get_cost();
+        // int new_real_g = current_real_g + op.get_cost();
+        int new_real_g = current_real_g + successor_cost;
         bool is_preferred = preferred_operators.contains(op_id);
         if (new_real_g < bound) {
             EvaluationContext new_eval_context(
@@ -155,7 +163,6 @@ SearchStatus LazySearch::step() {
     // - current_g is the g value of the current state according to the cost_type
     // - current_real_g is the g value of the current state (using real costs)
 
-
     SearchNode node = search_space.get_node(current_state);
     bool reopen = reopen_closed_nodes && !node.is_new() &&
         !node.is_dead_end() && (current_g < node.get_g());
@@ -189,19 +196,38 @@ SearchStatus LazySearch::step() {
             node.close();
             if (check_goal_and_set_plan(current_state))
                 return SOLVED;
+            // if (successor_count == 1 || search_progress.check_progress(current_eval_context)) {
             if (search_progress.check_progress(current_eval_context)) {
                 statistics.print_checkpoint_line(current_g);
                 reward_progress();
             }
             generate_successors();
+            // while (successor_count == 1 && successor_cost == 0) { // fast forward to next state
+            //     fetch_next_state();
+            //     SearchNode node2 = search_space.get_node(current_state);
+            //     if (node2.is_new()) {
+            //         GlobalState parent_state2 = state_registry.lookup_state(current_predecessor_id);
+            //         SearchNode parent_node2 = search_space.get_node(parent_state2);
+            //         OperatorProxy current_operator2 = task_proxy.get_operators()[current_operator_id];
+            //         cout << " --- FF " << current_operator2.get_name() << " " << successor_count << "sco" << successor_cost << endl;
+            //         node2.open(parent_node2, current_operator2, get_adjusted_cost(current_operator2));
+            //         node2.close();
+            //         generate_successors();
+            //     }
+            // }
             statistics.inc_expanded();
         } else {
             node.mark_as_dead_end();
             statistics.inc_dead_ends();
+            OperatorProxy current_operator2 = task_proxy.get_operators()[current_operator_id];
+            cout << " --- DD " << current_operator2.get_name() << endl;
         }
         if (current_predecessor_id == StateID::no_state) {
             print_initial_evaluator_values(current_eval_context);
         }
+    } else {
+        OperatorProxy current_operator2 = task_proxy.get_operators()[current_operator_id];
+        cout << " --- ON " << current_operator2.get_name() << endl;
     }
     return fetch_next_state();
 }

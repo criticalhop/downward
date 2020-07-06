@@ -251,6 +251,7 @@ class SASGoal:
 
 
 class SASOperator:
+    __slots__ = ['name', 'prevail', 'pre_post', 'cost']
     def __init__(self, name, prevail, pre_post, cost):
         self.name = name
         self.prevail = sorted(prevail)
@@ -261,15 +262,16 @@ class SASOperator:
         # Return a sorted and uniquified version of pre_post. We would
         # like to just use sorted(set(pre_post)), but this fails because
         # the effect conditions are a list and hence not hashable.
-        def tuplify(entry):
-            var, pre, post, cond = entry
-            return var, pre, post, tuple(cond)
-        def listify(entry):
-            var, pre, post, cond = entry
-            return var, pre, post, list(cond)
-        pre_post = map(tuplify, pre_post)
+        # def tuplify(entry):
+        #     var, pre, post, cond = entry
+        #     return var, pre, post, tuple(cond)
+        # def listify(entry):
+        #     var, pre, post, cond = entry
+        #     return var, pre, post, list(cond)
+        # pre_post = map(tuplify, pre_post)
+        pre_post = map(lambda e: (e[0],e[1],e[2],tuple(e[3])), pre_post)
         pre_post = sorted(set(pre_post))
-        pre_post = list(map(listify, pre_post))
+        pre_post = list(map(lambda e: (e[0],e[1],e[2],list(e[3])), pre_post))
         return pre_post
 
     def validate(self, variables):
@@ -356,7 +358,7 @@ class SASOperator:
                 cond_str = ""
             print("  v%d: %d -> %d%s" % (var, pre, post, cond_str))
 
-    def output(self, stream):
+    def output_slow(self, stream):
         print("begin_operator", file=stream)
         print(self.name[1:-1], file=stream)
         print(len(self.prevail), file=stream)
@@ -370,6 +372,33 @@ class SASOperator:
             print(var, pre, post, file=stream)
         print(self.cost, file=stream)
         print("end_operator", file=stream)
+
+    def output(self, stream):
+        gen_prepost = []
+        for var, pre, post, cond in self.pre_post:
+            gen_prepost.append(str(len(cond)))
+            for cvar, cval in cond:
+                gen_prepost.append(str(cvar))
+                gen_prepost.append(str(cval))
+            gen_prepost.append(str(var))
+            gen_prepost.append(str(pre))
+            gen_prepost.append(str(post))
+        stream.write("""begin_operator
+%s
+%s
+%s
+%s
+%s
+%s
+end_operator
+""" % (
+    self.name[1:-1], 
+    len(self.prevail),
+    '\n'.join(["%s %s"%(var, val) for var, val in self.prevail]),
+    len(self.pre_post),
+    ' '.join(gen_prepost),
+    self.cost
+    ))
 
     def get_encoding_size(self):
         size = 1 + len(self.prevail)
