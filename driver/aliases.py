@@ -150,6 +150,8 @@ ALIASES["seq-opt-lmcut"] = [
 PORTFOLIOS = {}
 for portfolio in os.listdir(PORTFOLIO_DIR):
     name, ext = os.path.splitext(portfolio)
+    if not ext == ".py":
+        continue
     assert ext == ".py", portfolio
     PORTFOLIOS[name.replace("_", "-")] = os.path.join(PORTFOLIO_DIR, portfolio)
 

@@ -6,6 +6,7 @@ import itertools
 import constraints
 import pddl
 import tools
+import copy
 
 # Notes:
 # All parts of an invariant always use all non-counted variables
@@ -173,8 +174,9 @@ class InvariantPart:
     def possible_matches(self, own_literal, other_literal):
         assert self.predicate == own_literal.predicate
         result = []
+        new_order_template = [None] * len(self.order)
         for mapping in self.possible_mappings(own_literal, other_literal):
-            new_order = [None] * len(self.order)
+            new_order = copy.copy(new_order_template)
             omitted = -1
             for (key, value) in mapping:
                 if value == -1:
@@ -195,11 +197,20 @@ class Invariant:
     # A "part" is a symbolic fact only variable symbols in {V1, ..., Vk, X};
     # the symbol X may occur at most once.
 
+    __slots__ = ['parts', '_predicates', 'predicate_to_part']
+
     def __init__(self, parts):
         self.parts = frozenset(parts)
-        self.predicates = set([part.predicate for part in parts])
+        # self.predicates = set([part.predicate for part in parts])
+        self._predicates = None
         self.predicate_to_part = dict([(part.predicate, part) for part in parts])
-        assert len(self.parts) == len(self.predicates)
+        # assert len(self.parts) == len(self.predicates)
+
+    @property
+    def predicates(self):
+        if not self._predicates:
+            self._predicates = set([part.predicate for part in self.parts])
+        return self._predicates
 
     def __eq__(self, other):
         return self.parts == other.parts
@@ -302,11 +313,18 @@ class Invariant:
             system = constraints.ConstraintSystem()
             system.add_assignment(assignment)
             mapping = assignment.get_mapping()
-            if len(params) > 1:
-                for (n1, n2) in itertools.combinations(params, 2):
+            if params:
+                if len(params) == 2:
+                    n1 = params[0]
+                    n2 = params[1]
                     if mapping.get(n1, n1) != mapping.get(n2, n2):
                         negative_clause = constraints.NegativeClause([(n1, n2)])
                         system.add_negative_clause(negative_clause)
+                else:
+                    for (n1, n2) in itertools.combinations(params, 2):
+                        if mapping.get(n1, n1) != mapping.get(n2, n2):
+                            negative_clause = constraints.NegativeClause([(n1, n2)])
+                            system.add_negative_clause(negative_clause)
             minimal_renamings.append(system)
         return minimal_renamings
 
@@ -391,6 +409,7 @@ class Invariant:
         return still_unbalanced
 
     def lhs_satisfiable(self, renaming, lhs_by_pred):
+        # return True
         system = renaming.copy()
         ensure_conjunction_sat(system, *itertools.chain(lhs_by_pred.values()))
         return system.is_solvable()

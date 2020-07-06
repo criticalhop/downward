@@ -6,9 +6,10 @@ import itertools
 
 class NegativeClause(object):
     # disjunction of inequalities
+    __slots__ = ['parts']
     def __init__(self, parts):
         self.parts = parts
-        assert len(parts)
+        # assert len(parts)
 
     def __str__(self):
         disj = " or ".join(["(%s != %s)" % (v1, v2)
@@ -155,6 +156,7 @@ class ConstraintSystem(object):
         """Check whether the combinatorial assignments include at least
            one consistent assignment under which the negative clauses
            are satisfiable"""
+        # return True
         for assignments in itertools.product(*self.combinatorial_assignments):
             combined = self._combine_assignments(assignments)
             if not combined.is_consistent():
