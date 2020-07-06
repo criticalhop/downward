@@ -52,6 +52,10 @@ def parse_args():
     argparser.add_argument(
         "--dump-task", action="store_true",
         help="dump human-readable SAS+ representation of the task")
+    argparser.add_argument(
+        "--total-queue-pushes", dest="total_queue_pushes", default=0, type=int,
+        help="set total queue pushes limit!")
+    
     return argparser.parse_args()
 
 
