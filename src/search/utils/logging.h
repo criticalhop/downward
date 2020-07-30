@@ -27,12 +27,6 @@ private:
 public:
     template<typename T>
     Log &operator<<(const T &elem) {
-        if (!line_has_started) {
-            line_has_started = true;
-            std::cout << "[t=" << g_timer << ", "
-                      << get_peak_memory_in_kb() << " KB] ";
-        }
-
         std::cout << elem;
         return *this;
     }
