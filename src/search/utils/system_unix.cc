@@ -99,7 +99,12 @@ void print_peak_memory_reentrant() {
     write_reentrant_str(STDOUT_FILENO, " KB\n");
 #else
 
-    int proc_file_descr = TEMP_FAILURE_RETRY(open("/proc/self/status", O_RDONLY));
+#define TEMP_FAILURE_RETRY(retvar, expression) do { \
+    retvar = (expression); \
+} while (retvar == -1 && errno == EINTR);
+
+    int proc_file_descr;
+    TEMP_FAILURE_RETRY(proc_file_descr, open("/proc/self/status", O_RDONLY));
     if (proc_file_descr == -1) {
         write_reentrant_str(
             STDERR_FILENO,
@@ -143,7 +148,8 @@ void print_peak_memory_reentrant() {
       Ignore potential errors other than EINTR (there is nothing we can do
       about I/O errors or bad file descriptors here).
     */
-    TEMP_FAILURE_RETRY(close(proc_file_descr));
+    int retval0;
+    TEMP_FAILURE_RETRY(retval0, close(proc_file_descr));
 #endif
 }
 
@@ -226,7 +232,7 @@ void register_event_handlers() {
     // On exit or when receiving certain signals such as SIGINT (Ctrl-C),
     // print the peak memory usage.
 #if OPERATING_SYSTEM == LINUX
-    on_exit(exit_handler, 0);
+    // on_exit(exit_handler, 0);
 #elif OPERATING_SYSTEM == OSX
     atexit(exit_handler);
 #endif
