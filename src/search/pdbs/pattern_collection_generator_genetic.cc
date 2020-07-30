@@ -141,8 +141,8 @@ bool PatternCollectionGeneratorGenetic::is_pattern_too_large(
     for (size_t i = 0; i < pattern.size(); ++i) {
         VariableProxy var = variables[pattern[i]];
         int domain_size = var.get_domain_size();
-        if (!utils::is_product_within_limit(mem, domain_size, pdb_max_size))
-            return true;
+        // if (!utils::is_product_within_limit(mem, domain_size, pdb_max_size))
+            // return true;
         mem *= domain_size;
     }
     return false;
@@ -161,9 +161,11 @@ bool PatternCollectionGeneratorGenetic::mark_used_variables(
 
 void PatternCollectionGeneratorGenetic::evaluate(vector<double> &fitness_values) {
     TaskProxy task_proxy(*task);
+    int i = 0;
     for (const auto &collection : pattern_collections) {
-        //cout << "evaluate pattern collection " << (i + 1) << " of "
-        //     << pattern_collections.size() << endl;
+        cout << "evaluate pattern collection " << (i + 1) << " of "
+            << pattern_collections.size() << endl;
+        i++;
         double fitness = 0;
         bool pattern_valid = true;
         vector<bool> variables_used(task_proxy.get_variables().size(), false);
@@ -189,6 +191,7 @@ void PatternCollectionGeneratorGenetic::evaluate(vector<double> &fitness_values)
             remove_irrelevant_variables(pattern);
             pattern_collection->push_back(pattern);
         }
+        cout << "  ... do zw" << endl;
         if (!pattern_valid) {
             /* Set fitness to a very small value to cover cases in which all
                patterns are invalid. */
@@ -205,6 +208,7 @@ void PatternCollectionGeneratorGenetic::evaluate(vector<double> &fitness_values)
                 best_patterns = pattern_collection;
             }
         }
+        cout << "  ... zw done" << endl;
         fitness_values.push_back(fitness);
     }
 }

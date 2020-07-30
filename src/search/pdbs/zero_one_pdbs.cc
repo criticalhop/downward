@@ -58,6 +58,7 @@ double ZeroOnePDBs::compute_approx_mean_finite_h() const {
     double approx_mean_finite_h = 0;
     for (const shared_ptr<PatternDatabase> &pdb : pattern_databases) {
         approx_mean_finite_h += pdb->compute_mean_finite_h();
+        cout << "h: " << approx_mean_finite_h << endl;
     }
     return approx_mean_finite_h;
 }

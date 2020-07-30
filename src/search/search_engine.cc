@@ -108,6 +108,9 @@ bool SearchEngine::check_goal_and_set_plan(const GlobalState &state) {
         set_plan(plan);
         return true;
     }
+    Plan plan;
+    search_space.trace_path(state, plan);
+    plan_manager.print_plan(plan, task_proxy); // grandrew
     return false;
 }
 
