@@ -32,6 +32,9 @@ There are two types of partial grounding algorithms:
 A) ad-hoc algorithms that work on any given problem without prerequisites,
 B) algorithms based on learning a model for a specific domain.
 
+
+
+## RUNNING PARTIAL GROUNDING WITH OR WITHOUT A TRAINED MODEL
 For A) the following options are available:
 
 - Sorting of actions during grounding (priority functions):
@@ -83,6 +86,9 @@ It can be combined with arbitrary priority functions, but no termination conditi
 If both absolute and relative increment are given, the maximum of both is taken.
 
 
+
+
+## TRAINING A MODEL
 The usage of learning algorithms B) is divided in two phases: 
 the training phase does offline learning of some models, and the planning phase uses the learned models during grounding.
 
@@ -97,10 +103,10 @@ Learning Phase:
         * sas_plan/good_operators: file containing the list of "good" operators, one per line. 
         * all_operators.bz2: file containing a list of all grounded (good and bad) operators, one per line. Compressed with bz2 format to use less space.
 
-* The learning phase consists of several steps. They require executing an script located in src/subdominization-training.py.
+* The learning phase consists of several steps. They require executing python scripts located in src/subdominization-training.
 
 
- 1) ./gen-subdom-rules.py: Generates an initial set of features (each feature correspond to a rule). It exhaustively generates many rules, and one can control the size by two parameters: (rule_size y num_rules).
+1) ./gen-subdom-rules.py: Generates an initial set of features (each feature correspond to a rule). It exhaustively generates many rules, and one can control the size by two parameters: (rule_size y num_rules).
 If the training runs are provided, it'll extract data from them to avoid rules that check predicates in the initial state or goal if they never appeared there. This is recommended to avoid unnecessary rules that would be entirely uninformative.
 
 
@@ -122,14 +128,24 @@ Usage: gen-subdom-training.py [--debug-info] [--instances-relevant-rules INSTANC
   - instances-relevant-rules and max-training-examples allow you to filter the input features that are irrelevant (see step 1-prime below)
 
 
- 3) ./select-features.py
+3) ./learning/select-features.py --training-folder FOLDER1 --selector-type TYPE [--keep-duplicate-features] [--mean-over-duplicates]
 
- 4) learn models
+    --training-folder: path to training set files (must be *.csv, where last column is the class, also need relevant_rules file); this is the outcome of 2)
+    --selector-type: the type of the learning model: can be one of 'LRCV', 'LG', 'RF' , 'SVMCV','NBB', 'NBG', 'DT'
+    --keep-duplicate-features: elimination and aggregation of duplicate feature vectors, default is eliminate
+    --mean-over-duplicates: aggregating eliminated duplicate feature vectors by taking max or mean (default is max)
 
+4) ./learning/train_model_for_domain.py --training-set-folder FOLDER1 --model-folder FOLDER2 --model-type TYPE [--keep-duplicate-features] [--mean-over-duplicates]
 
+    --training-set-folder:  path to training set files (must be *.csv, where last column is the class); this is the outcome of 2) or 3)
+    --model-folder: path to folder where to store model files in
+    --model-type: the type of the learning model: can be one of 'LRCV', 'LG', 'RF' , 'SVMCV','NBB', 'NBG', 'DT'
+    --keep-duplicate-features: elimination and aggregation of duplicate feature vectors, default is eliminate
+    --mean-over-duplicates: when --keep-duplicate-features is set, aggregating eliminated duplicate feature vectors by taking max or mean (default is max)
 
 
 Alternatively, step 4 can be substituted by:
+# TODO this is not actually true, is it?! we either do 1-4 as above or replace all of this by get-aleph-training.py, no?
 
 4bis) gen-aleph-training.py
 
@@ -153,9 +169,4 @@ The two parameters are optional and make the rule filter approximate in exchange
 
 
 
-
-Planning phase:
-
-The planner is run exactly the same as Fast Downward, but providing additional options for
-the translation phase that specify the stopping condition, and the priority queue.
 
