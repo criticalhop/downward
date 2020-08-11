@@ -28,7 +28,63 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 
 **Instructions to run the partial grounding algorithms.**
 
- This is divided in two phases: the training phase does offline learning of some models, and the planning phase uses the learned models during grounding.
+There are two types of partial grounding algorithms: 
+A) ad-hoc algorithms that work on any given problem without prerequisites,
+B) algorithms based on learning a model for a specific domain.
+
+For A) the following options are available:
+
+- Sorting of actions during grounding (priority functions):
+fifo => ground actions in first-in-first-out order; this is the default of fast downward
+lifo => ground actions in last-in-first-out order
+random => random action ordering
+roundrobin => one FIFO priority queue per action schema, grounding on action per schema before proceeding to the next schema.
+noveltyfifo => sorting actions in the queue by their "novelty" score
+roundrobinnovelty => one noveltyfifo queue per action schema
+
+For learning-based grounding as of B), there are additionally the following options:
+trained => ordering of actions based on the priority learned by an ML model; requires the option "--trained-model-folder" to points to a directory that contains a file SCHEMA.model for each actions schema SCHEMA defined in the PDDL domain that it was trained on.
+roundrobintrained => same as trained, with a separate priority queue per action schema
+aleph => similar to the *trained queues, it requires an additional option "--aleph-model-file" that specifies a file that contains the model learned by aleph for the given domain
+roundrobinaleph => same as aleph, with a separate priority queue per action schema
+
+- Termination condition:
+default     => perform full grounding; this is the default of fast downward
+goal-relaxed-reachable  => stop the grounding process when the goal is delete-relaxed reachable
+goal-relaxed-reachable [number NUMBER] 
+=> stop the grounding process when the goal is delete-relaxed reachable and NUMBER actions have been grounded since the goal became delete-relaxed reachable
+
+goal-relaxed-reachable [min-number NUMBER] 
+=> stop the grounding process when the goal is delete-relaxed reachable and at least NUMBER actions have been grounded
+
+goal-relaxed-reachable [percentage NUMBER] 
+=> stop the grounding process when the goal is delete-relaxed reachable and, say X is the number of actions grounded when the goal becomes delete-relaxed reachable, (100 + NUMBER)% * X actions have been grounded.
+
+goal-relaxed-reachable [percentage NUMBER1 min-increment NUMBER2] 
+=> stop the grounding process when the goal is delete-relaxed reachable and at least max(#RS * NUMBER1%, NUMBER2) + #RS actions have been grounded, where #RS is the number of actions grounded when the goal becomes relaxed reachable.
+
+goal-relaxed-reachable [min-number NUMBER1 percentage NUMBER2 max-increment NUMBER3] 
+=> stop the grounding process when the goal is delete-relaxed reachable and at least max(NUMBER1, min(#RS * NUMBER2%, NUMBER3) + #RS) actions have been grounded, where #RS is the number of actions grounded when the goal becomes relaxed reachable.
+
+All termination conditions can be combined arbitrarily with all grounding priority functions.
+
+These options can be used by passing the options "--grounding-action-queue-ordering" and "--termination-condition" to the translator, for example:
+./fast-downward.py problem.pddl --translate-options --grounding-action-queue-ordering noveltyfifo --termination-condition goal-relaxed-reachable min-number 10000 --search-options --search "astar(blind)"
+
+Finally, in contrast to the one-shot option described so far, there is the option to run incremental grounding, iteratively increasing the number of grounded actions automatically until a plan is found or full grounding is performed.
+The option "--incremental-grounding" is implemented in the driver and can be used as follows:
+./fast-downward.py --incremental-grounding /mnt/Daten/Uni/Software/benchmarks-aibasel/nomystery-opt11-strips/p03.pddl --translate-options --grounding-action-queue-ordering noveltyfifo --search-options --search "astar(blind)"
+It can be combined with arbitrary priority functions, but no termination condition must be specified. Additionally, the following options are available:
+--incremental-grounding-search-time-limit NUMBER => limits the search time for each iteration of the incremental grounding process; given in seconds
+--incremental-grounding-minimum NUMBER => minimum number of actions to ground in the first iteration
+--incremental-grounding-increment NUMBER => absolute increment in number of actions from one iteration to the next; default is 10000
+--incremental-grounding-increment-percentage NUMBER => relative increment in the number of grounded actions from one iteration to the next
+
+If both absolute and relative increment are given, the maximum of both is taken.
+
+
+The usage of learning algorithms B) is divided in two phases: 
+the training phase does offline learning of some models, and the planning phase uses the learned models during grounding.
 
 Learning Phase:
 * Prerequisites:
