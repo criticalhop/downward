@@ -94,7 +94,7 @@ the training phase does offline learning of some models, and the planning phase 
 
 Learning Phase:
 * Prerequisites:
-   - python3, with libraries: numpy, ...
+   - python3, with libraries: numpy, sklearn, matplotlib, pandas, pylab
    
    - <domain>: A PDDL domain file that is shared accross all training and testing instances.
    - <runs>: A directory containing the training data. It should contain a sub-directory for each instance, which should contain the following files:
