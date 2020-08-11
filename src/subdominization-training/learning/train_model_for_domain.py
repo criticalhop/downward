@@ -8,8 +8,6 @@ import argparse
 
 from shutil import copy
 
-import concurrent.futures
-
 from sys import version_info
 
 
@@ -112,9 +110,7 @@ if __name__ == "__main__":
         
         lab_configs = []
         
-        #with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         for model in models:
-        #       executor.submit(train_wrapper, model, lab_configs)
             train_wrapper(model, lab_configs)
             
         print(lab_configs)
