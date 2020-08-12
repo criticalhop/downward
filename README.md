@@ -52,9 +52,13 @@ noveltyfifo => sorting actions in the queue by their "novelty" score
 roundrobinnovelty => one noveltyfifo queue per action schema
 
 For learning-based grounding as of B), there are additionally the following options:
+
 trained => ordering of actions based on the priority learned by an ML model; requires the option "--trained-model-folder" to points to a directory that contains a file SCHEMA.model for each actions schema SCHEMA defined in the PDDL domain that it was trained on.
+
 roundrobintrained => same as trained, with a separate priority queue per action schema
+
 aleph => similar to the *trained queues, it requires an additional option "--aleph-model-file" that specifies a file that contains the model learned by aleph for the given domain
+
 roundrobinaleph => same as aleph, with a separate priority queue per action schema
 
 - Termination condition:
