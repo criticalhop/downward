@@ -86,11 +86,17 @@ These options can be used by passing the options "--grounding-action-queue-order
 
 Finally, in contrast to the one-shot option described so far, there is the option to run incremental grounding, iteratively increasing the number of grounded actions automatically until a plan is found or full grounding is performed.
 The option "--incremental-grounding" is implemented in the driver and can be used as follows:
+
 ./fast-downward.py --incremental-grounding /mnt/Daten/Uni/Software/benchmarks-aibasel/nomystery-opt11-strips/p03.pddl --translate-options --grounding-action-queue-ordering noveltyfifo --search-options --search "astar(blind)"
+
 It can be combined with arbitrary priority functions, but no termination condition must be specified. Additionally, the following options are available:
+
 --incremental-grounding-search-time-limit NUMBER => limits the search time for each iteration of the incremental grounding process; given in seconds
+
 --incremental-grounding-minimum NUMBER => minimum number of actions to ground in the first iteration
+
 --incremental-grounding-increment NUMBER => absolute increment in number of actions from one iteration to the next; default is 10000
+
 --incremental-grounding-increment-percentage NUMBER => relative increment in the number of grounded actions from one iteration to the next
 
 If both absolute and relative increment are given, the maximum of both is taken.
