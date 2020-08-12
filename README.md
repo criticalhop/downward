@@ -38,11 +38,17 @@ B) algorithms based on learning a model for a specific domain.
 For A) the following options are available:
 
 - Sorting of actions during grounding (priority functions):
+
 fifo => ground actions in first-in-first-out order; this is the default of fast downward
+
 lifo => ground actions in last-in-first-out order
+
 random => random action ordering
+
 roundrobin => one FIFO priority queue per action schema, grounding on action per schema before proceeding to the next schema.
+
 noveltyfifo => sorting actions in the queue by their "novelty" score
+
 roundrobinnovelty => one noveltyfifo queue per action schema
 
 For learning-based grounding as of B), there are additionally the following options:
@@ -52,8 +58,11 @@ aleph => similar to the *trained queues, it requires an additional option "--ale
 roundrobinaleph => same as aleph, with a separate priority queue per action schema
 
 - Termination condition:
+
 default     => perform full grounding; this is the default of fast downward
+
 goal-relaxed-reachable  => stop the grounding process when the goal is delete-relaxed reachable
+
 goal-relaxed-reachable [number NUMBER] 
 => stop the grounding process when the goal is delete-relaxed reachable and NUMBER actions have been grounded since the goal became delete-relaxed reachable
 
@@ -72,6 +81,7 @@ goal-relaxed-reachable [min-number NUMBER1 percentage NUMBER2 max-increment NUMB
 All termination conditions can be combined arbitrarily with all grounding priority functions.
 
 These options can be used by passing the options "--grounding-action-queue-ordering" and "--termination-condition" to the translator, for example:
+
 ./fast-downward.py problem.pddl --translate-options --grounding-action-queue-ordering noveltyfifo --termination-condition goal-relaxed-reachable min-number 10000 --search-options --search "astar(blind)"
 
 Finally, in contrast to the one-shot option described so far, there is the option to run incremental grounding, iteratively increasing the number of grounded actions automatically until a plan is found or full grounding is performed.
