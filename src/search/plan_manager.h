@@ -29,6 +29,7 @@ public:
         bool generates_multiple_plan_files = false);
     void print_plan(
         const Plan &plan, const TaskProxy &task_proxy);
+    void print_cost(const Plan &plan, const TaskProxy &task_proxy);
 };
 
 extern int calculate_plan_cost(const Plan &plan, const TaskProxy &task_proxy);

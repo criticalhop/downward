@@ -69,14 +69,14 @@ void PlanManager::save_plan(
     utils::g_log << "Plan cost: " << plan_cost << endl;
     ++num_previously_generated_plans;
 }
-
-void PlanManager::print_plan(
-    const Plan &plan, const TaskProxy &task_proxy) {
-    cout << "---" << endl;
+void PlanManager::print_plan(const Plan &plan, const TaskProxy &task_proxy) {
     OperatorsProxy operators = task_proxy.get_operators();
     for (OperatorID op_id : plan) {
         cout << operators[op_id].get_name() << " (" << operators[op_id].get_cost() << ")" << endl;
     }
+}
+
+void PlanManager::print_cost(const Plan &plan, const TaskProxy &task_proxy) {
     int plan_cost = calculate_plan_cost(plan, task_proxy);
     cout << "Plan length: " << plan.size() << " step(s)." << endl;
     cout << "Plan cost: " << plan_cost << endl;

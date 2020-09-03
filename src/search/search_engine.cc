@@ -14,6 +14,7 @@
 #include "utils/rng_options.h"
 #include "utils/system.h"
 #include "utils/timer.h"
+#include "command_line.h"
 
 #include <cassert>
 #include <iostream>
@@ -23,6 +24,8 @@ using namespace std;
 using utils::ExitCode;
 
 class PruningMethod;
+
+extern LOG_LEVEL loglevel;
 
 successor_generator::SuccessorGenerator &get_successor_generator(const TaskProxy &task_proxy) {
     utils::g_log << "Building successor generator..." << flush;
@@ -108,8 +111,15 @@ bool SearchEngine::check_goal_and_set_plan(const GlobalState &state) {
         return true;
     }
     Plan plan;
-    search_space.trace_path(state, plan);
-    plan_manager.print_plan(plan, task_proxy); // grandrew
+    cout << loglevel << endl;
+    if ((loglevel > info )){
+        search_space.trace_path(state, plan);
+        cout << "---" << endl;
+        if (loglevel == trace){
+            plan_manager.print_plan(plan, task_proxy); // grandrew
+        }
+        plan_manager.print_cost(plan, task_proxy);
+    }
     return false;
 }
 

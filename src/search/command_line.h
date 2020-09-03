@@ -6,6 +6,13 @@
 #include <memory>
 #include <string>
 
+enum LOG_LEVEL { error,
+                 warning,
+                 info,
+                 debug,
+                 trace };
+
+
 namespace options {
 class Registry;
 }

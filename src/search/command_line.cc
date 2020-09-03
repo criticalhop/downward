@@ -11,8 +11,11 @@
 
 #include <algorithm>
 #include <vector>
+#include <string>
 
 using namespace std;
+
+LOG_LEVEL loglevel;
 
 ArgError::ArgError(const string &msg)
     : msg(msg) {
@@ -64,6 +67,23 @@ static shared_ptr<SearchEngine> parse_cmd_line_aux(
             OptionParser parser(sanitize_arg_string(args[i]), registry,
                                 predefinitions, dry_run);
             engine = parser.start_parsing<shared_ptr<SearchEngine>>();
+        } else if (arg == "--loglevel") {
+            if (is_last)
+                throw ArgError("missing argument after --loglevel");
+            ++i;
+            // string::l = args[i];
+            if (!args[i].compare("debug")) {
+                loglevel = debug;
+            } else if (!args[i].compare("trace")) {
+                loglevel = trace;
+            } else if (!args[i].compare("warning")) {
+                loglevel = warning;
+            } else if (!args[i].compare("error")) {
+                loglevel = error;
+            } else if (!args[i].compare("info")) {
+                loglevel = info;
+            }
+            cout << "loglevel: " << loglevel << endl;
         } else if (arg == "--help" && dry_run) {
             cout << "Help:" << endl;
             bool txt2tags = false;
