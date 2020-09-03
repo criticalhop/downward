@@ -111,7 +111,6 @@ bool SearchEngine::check_goal_and_set_plan(const GlobalState &state) {
         return true;
     }
     Plan plan;
-    cout << loglevel << endl;
     if ((loglevel > info )){
         search_space.trace_path(state, plan);
         cout << "---" << endl;
