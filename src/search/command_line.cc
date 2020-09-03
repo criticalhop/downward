@@ -15,7 +15,7 @@
 
 using namespace std;
 
-LOG_LEVEL loglevel;
+LOG_LEVEL loglevel = info;
 
 ArgError::ArgError(const string &msg)
     : msg(msg) {
