@@ -523,7 +523,9 @@ def pddl_to_sas(task):
          reachable_action_params) = instantiate.explore(task)
 
     if not relaxed_reachable:
-        return unsolvable_sas_task("No relaxed solution")
+        print("No relaxed solution Generated unsolvable task", file=sys.stderr)
+        ## For a full list of exit codes, please see driver/returncodes.py.
+        sys.exit(10)
 
     # HACK! Goals should be treated differently.
     if isinstance(task.goal, pddl.Conjunction):

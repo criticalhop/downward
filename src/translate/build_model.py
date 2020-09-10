@@ -311,10 +311,9 @@ def compute_model(prog):
         auxiliary_atoms = 0
         while queue:
             if options.total_queue_pushes > 0 and queue.num_pushes > options.total_queue_pushes:
-                print("%d > %d total queue pushes raise" % (queue.num_pushes, options.total_queue_pushes))
+                print("%d > %d total queue pushes raise" % (queue.num_pushes, options.total_queue_pushes), file=sys.stderr)
                 ## For a full list of exit codes, please see driver/returncodes.py.
-                OUT_OF_TOTAL_QUEUE_PUSHES = 150
-                sys.exit(OUT_OF_TOTAL_QUEUE_PUSHES)
+                sys.exit(150)
             next_atom = queue.pop()
             pred = next_atom.predicate
             if isinstance(pred, str) and "$" in pred:

@@ -111,9 +111,11 @@ SearchStatus IteratedSearch::step_return_value() {
     } else {
         if (continue_on_fail) {
             utils::g_log << "No solution found - keep searching" << endl;
+            std::cerr << "No solution found - keep searching" << endl;
             return IN_PROGRESS;
         } else {
             utils::g_log << "No solution found - stop searching" << endl;
+            std::cerr << "No solution found - stop searching" << endl;
             return iterated_found_solution ? SOLVED : FAILED;
         }
     }

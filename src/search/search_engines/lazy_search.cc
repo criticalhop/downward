@@ -127,6 +127,7 @@ LazySearch::LazySearch(const Options &opts)
     SearchStatus LazySearch::fetch_next_state() {
         if (open_list->empty()) {
             utils::g_log << "Completely explored state space -- no solution!" << endl;
+            std::cerr << "Completely explored state space -- no solution!" << endl;
             return FAILED;
         }
 

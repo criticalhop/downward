@@ -113,6 +113,7 @@ SearchStatus EagerSearch::step() {
     while (true) {
         if (open_list->empty()) {
             utils::g_log << "Completely explored state space -- no solution!" << endl;
+            std::cerr << "Completely explored state space -- no solution!" << endl;
             return FAILED;
         }
         StateID id = open_list->remove_min();
