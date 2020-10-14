@@ -58,7 +58,7 @@ import helpers
 
 class LearnRules():
     
-    def __init__(self, isBalanced=False, modelType='LRCV', training_file ='', njobs=1, testSize=0.0, remove_duplicate_features=True, take_max_for_duplicates=True):
+    def __init__(self, isBalanced=False, modelType='LRCV', training_file ='', njobs=1, testSize=0.03, remove_duplicate_features=True, take_max_for_duplicates=True):
         '''
         Constructor take parameters:
         isBalanced, Boolean for balance the target of prediction in training phase
