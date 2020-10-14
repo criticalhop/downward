@@ -346,8 +346,9 @@ class RulesEvaluator:
         for l in rule_text:
             try:
                 re = RuleEval(l, task)
-            except UnsupportedRule:
                 self.rules[re.action_schema].append(re)
+            except UnsupportedRule:
+                pass
                
     def eliminate_rules(self, rules_text):
         for a in self.rules:
