@@ -166,8 +166,8 @@ class PartiallyInstantiatedPredicateList:
           for combination in itertools.product(*[["ini", "goal"] for x in self.predicate_list]):
                if not all ([(combination[i] == "ini" and pred[0] in predicates_ini) or (combination[i] == "goal" and pred[0] in predicates_goal)  for (i, pred) in enumerate(self.predicate_list)]):
                     continue
-               rule_text_list = ["{}:{}({})".format(combination[i], pred[0], ", ".join(pred[1])) for (i, pred) in enumerate(self.predicate_list)]
-               if len(set (rule_text_list)) == len(rule_text_list):
+               rule_text_list = ["{}:{}({})".format(combination[i], pred[0], ", ".join(pred[1])) for (i, pred) in enumerate(self.predicate_list) if pred[1]]
+               if rule_text_list and rule_text_list[0] and len(set (rule_text_list)) == len(rule_text_list):
                     rules.append(Rule(self.action_schema, ";".join(rule_text_list)))
 
           return rules
