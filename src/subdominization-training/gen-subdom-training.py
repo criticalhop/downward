@@ -57,9 +57,9 @@ if __name__ == "__main__":
     options = argparser.parse_args()
 
     if os.path.exists(options.store_training_data):
-        result = raw_input('Output path "{}" already exists. Overwrite (y/n)?'.format(options.store_training_data))
-        if result.lower() not in ['y', 'yes']:
-            exit()
+        # result = raw_input('Output path "{}" already exists. Overwrite (y/n)?'.format(options.store_training_data))
+        # if result.lower() not in ['y', 'yes']:
+            # exit()
         shutil.rmtree(options.store_training_data)
 
         
@@ -149,6 +149,7 @@ if __name__ == "__main__":
             with bz2.BZ2File(all_operators_filename, "r") as actions:
             # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
                 for action in actions:
+                    action = action.decode("utf-8")
                     schema, arguments = action.split("(")
                     if not is_test_instance and schema in skip_schemas_training:
                         continue
@@ -156,7 +157,7 @@ if __name__ == "__main__":
                         continue
                     
                     
-                    arguments = map(lambda x: x.strip(), arguments.strip()[:-1].split(","))
+                    arguments = list(map(lambda x: x.strip(), arguments.strip()[:-1].split(",")))
                    
                     is_in_plan = 1 if  tuple([schema] + arguments) in plan else 0
                    
