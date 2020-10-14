@@ -2,6 +2,9 @@ from collections import defaultdict
 import itertools
 import pddl
 
+class UnsupportedRule(Exception):
+        pass
+
 def  valid_values(variables, values, variable_domains):
         assert (len (variables) == len(values))#, "Error: {} {}".format(str(variables), str(values)))
         return all(values[i] in variable_domains[var] for i, var in  enumerate (variables))
@@ -157,6 +160,8 @@ def evaluate_inigoal_rule(rule, fact_list):
         arguments = arguments.replace(")", "").replace("\n", "").replace(".", "").replace(" ", "").split(",")
         valid_arguments = tuple(set([a for a in arguments if a.startswith("?")]))
         constants = [(i, val) for (i, val) in enumerate(arguments) if val != "_" and not val.startswith("?")]
+        if len(constants) == 1 and constants[0][1] == "":
+                raise UnsupportedRule()
         positions_argument = {}
         
         for a in valid_arguments:
@@ -339,7 +344,10 @@ class RulesEvaluator:
     def __init__(self, rule_text, task):
         self.rules = defaultdict(list)
         for l in rule_text:
-            re = RuleEval(l, task)
+            try:
+                re = RuleEval(l, task)
+            except UnsupportedRule:
+                pass
             self.rules[re.action_schema].append(re)
                
     def eliminate_rules(self, rules_text):
