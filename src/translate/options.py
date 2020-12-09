@@ -55,6 +55,10 @@ def parse_args():
     argparser.add_argument(
         "--total-queue-pushes", dest="total_queue_pushes", default=0, type=int,
         help="set total queue pushes limit!")
+    argparser.add_argument(
+        "--queue_pushes_dump",
+        dest="queue_pushes_dump", action="store_true",
+        help="keep facts that can't be reached from the initial state")
     
     return argparser.parse_args()
 
