@@ -59,7 +59,10 @@ def parse_args():
         "--queue_pushes_dump",
         dest="queue_pushes_dump", action="store_true",
         help="keep facts that can't be reached from the initial state")
-    
+    argparser.add_argument(
+        "--queue_pushes_dump_chart",
+        dest="queue_pushes_dump_chart", action="store_true",
+        help="keep facts that can't be reached from the initial state")
     return argparser.parse_args()
 
 

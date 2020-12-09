@@ -8,7 +8,7 @@ import options
 import pddl
 import timers
 from functools import reduce
-import dill as pickle
+import pickle
 import pathlib
 import os.path
 
@@ -305,13 +305,14 @@ def dump_chart(chart):
         pathlib.Path(pathlib.Path(options.sas_file).parent).mkdir(parents=True, exist_ok=True)
         with open(os.path.join(pathlib.Path(options.sas_file).parent, 'queue_pushes.pkl'), 'wb') as file:
             pickle.dump(chart, file)
-
-        try:
-            import matplotlib.pyplot as plt
-            plt.plot(*zip(*chart))
-            plt.savefig(os.path.join(pathlib.Path(options.sas_file).parent, 'queue_pushes.svg'))
-        except Exception as err:
-            print(err)
+        if options.queue_pushes_dump_chart:
+            try:
+                import matplotlib.pyplot as plt
+                plt.plot(*zip(*chart))
+                plt.yscale('log')
+                plt.savefig(os.path.join(pathlib.Path(options.sas_file).parent, 'queue_pushes.svg'))
+            except Exception as err:
+                print(err)
 
 def compute_model(prog):
     with timers.timing("Preparing model"):
@@ -329,22 +330,25 @@ def compute_model(prog):
         grounding_width_bin=[]
         cont=False
         marker = pddl.Atom(None, [])
-        queue.queue.append(marker)
+        if options.queue_pushes_dump:
+            queue.queue.append(marker)
         while queue:
             if cont:
                 queue.queue.append(marker)
+                cont = False
             if options.total_queue_pushes > 0 and queue.num_pushes > options.total_queue_pushes:
                 print("%d > %d total queue pushes raise" % (queue.num_pushes, options.total_queue_pushes), file=sys.stderr)
                 dump_chart(grounding_width_bin)
                 ## For a full list of exit codes, please see driver/returncodes.py.
                 sys.exit(150)
             next_atom = queue.pop()
-            if next_atom is marker:
-                grounding_width_bin.append((queue_loop, queue.num_pushes))
-                queue_loop += 1
-                print("queue pushes %d loop %d" % (queue.num_pushes, queue_loop))
-                cont = True
-                continue
+            if options.queue_pushes_dump:
+                if next_atom is marker:
+                    grounding_width_bin.append((queue_loop, queue.num_pushes))
+                    queue_loop += 1
+                    print("queue pushes %d loop %d" % (queue.num_pushes, queue_loop))
+                    cont = True
+                    continue
 
             pred = next_atom.predicate
             if isinstance(pred, str) and "$" in pred:
