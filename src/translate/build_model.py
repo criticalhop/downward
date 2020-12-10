@@ -11,6 +11,7 @@ from functools import reduce
 import pickle
 import pathlib
 import os.path
+import collections
 
 def convert_rules(prog):
     RULE_TYPES = {
@@ -300,17 +301,18 @@ class Queue:
         self.queue_pos += 1
         return result
 
-def dump_chart(chart):
+def dump_chart(chart, name="queue_pushes"):
     if options.queue_pushes_dump:
         pathlib.Path(pathlib.Path(options.sas_file).parent).mkdir(parents=True, exist_ok=True)
-        with open(os.path.join(pathlib.Path(options.sas_file).parent, 'queue_pushes.pkl'), 'wb') as file:
+        with open(os.path.join(pathlib.Path(options.sas_file).parent, f'{name}.pkl'), 'wb') as file:
             pickle.dump(chart, file)
         if options.queue_pushes_dump_chart:
             try:
                 import matplotlib.pyplot as plt
+                plt.clf()
                 plt.plot(*zip(*chart))
                 plt.yscale('log')
-                plt.savefig(os.path.join(pathlib.Path(options.sas_file).parent, 'queue_pushes.svg'))
+                plt.savefig(os.path.join(pathlib.Path(options.sas_file).parent, f'{name}.svg'))
             except Exception as err:
                 print(err)
 
@@ -328,6 +330,8 @@ def compute_model(prog):
         auxiliary_atoms = 0
         queue_loop=0
         grounding_width_bin=[]
+        grounding_width_per_action = collections.defaultdict(list)
+        grounding_width_other = []
         cont=False
         marker = pddl.Atom(None, [])
         if options.queue_pushes_dump:
@@ -338,12 +342,30 @@ def compute_model(prog):
                 cont = False
             if options.total_queue_pushes > 0 and queue.num_pushes > options.total_queue_pushes:
                 print("%d > %d total queue pushes raise" % (queue.num_pushes, options.total_queue_pushes), file=sys.stderr)
+                if options.queue_pushes_per_action_dump:
+                    dump_chart(grounding_width_bin, name='other')
+                    for a in grounding_width_per_action:
+                        dump_chart(grounding_width_per_action[a], name=a)
                 dump_chart(grounding_width_bin)
                 ## For a full list of exit codes, please see driver/returncodes.py.
                 sys.exit(150)
             next_atom = queue.pop()
             if options.queue_pushes_dump:
                 if next_atom is marker:
+                    if options.queue_pushes_per_action_dump:
+                        per_action = {}
+                        other = [queue_loop,0]
+                        for atom in queue.queue:
+                            if isinstance(atom.predicate, pddl.actions.Action):
+                                if atom.predicate.name not in per_action:
+                                    per_action[atom.predicate.name] = [queue_loop, 0]
+                                per_action[atom.predicate.name][1] += 1
+                            else:
+                                other[1] += 1
+                        for action_name in per_action:
+                            grounding_width_per_action[action_name].append(per_action[action_name])
+                        grounding_width_other.append(other)
+
                     grounding_width_bin.append((queue_loop, queue.num_pushes))
                     queue_loop += 1
                     print("queue pushes %d loop %d" % (queue.num_pushes, queue_loop))
@@ -361,6 +383,10 @@ def compute_model(prog):
                 rule.fire(next_atom, cond_index, queue.push)
 
     dump_chart(grounding_width_bin)
+    if options.queue_pushes_per_action_dump:
+        dump_chart(grounding_width_bin, name='other')
+        for a in grounding_width_per_action:
+            dump_chart(grounding_width_per_action[a], name=a)
 
     print("%d relevant atoms" % relevant_atoms)
     print("%d auxiliary atoms" % auxiliary_atoms)
