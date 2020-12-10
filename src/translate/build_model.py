@@ -287,6 +287,17 @@ class Queue:
         self.enqueued = {(atom.predicate,) + tuple(atom.args)
                          for atom in self.queue}
         self.num_pushes = len(atoms)
+        self.num_pushes_per_action={}
+        self.num_pushes_other=0
+        if options.queue_pushes_per_action_dump:
+            for atom in self.queue:
+                if isinstance(atom.predicate, pddl.actions.Action):
+                    if atom.predicate.name not in self.num_pushes_per_action:
+                        self.num_pushes_per_action[atom.predicate.name] = 0
+                    self.num_pushes_per_action[atom.predicate.name] += 1
+                else:
+                    self.num_pushes_other[1] += 1
+
     def __bool__(self):
         return self.queue_pos < len(self.queue)
     __nonzero__ = __bool__
@@ -295,7 +306,14 @@ class Queue:
         eff_tuple = (predicate,) + tuple(args)
         if eff_tuple not in self.enqueued:
             self.enqueued.add(eff_tuple)
-            self.queue.append(pddl.Atom(predicate, list(args)))
+            atom = pddl.Atom(predicate, list(args))
+            self.queue.append(atom)
+            if isinstance(atom.predicate, pddl.actions.Action):
+                if atom.predicate.name not in self.num_pushes_per_action:
+                        self.num_pushes_per_action[atom.predicate.name] = [0, 0]
+                self.num_pushes_per_action[atom.predicate.name][1] += 1
+            else:
+                self.num_pushes_other[1] += 1
     def pop(self):
         result = self.queue[self.queue_pos]
         self.queue_pos += 1
