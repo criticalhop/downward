@@ -9,9 +9,7 @@
             "type": "python",
             "request": "launch",
             "args": [
-                "domain.pddl",
-                "problem.pddl"
-            ],
+               ],
             "program": "${file}",
             "console": "integratedTerminal"
         }
