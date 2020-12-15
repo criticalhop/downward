@@ -8,7 +8,7 @@ import options
 import pddl
 import timers
 from functools import reduce
-import pickle
+import json
 import pathlib
 import os.path
 import collections
@@ -301,20 +301,11 @@ class Queue:
         self.queue_pos += 1
         return result
 
-def dump_chart(chart, name="queue_pushes"):
+def dump_chart(chart, name="all_actions"):
     if options.queue_pushes_dump:
         pathlib.Path(pathlib.Path(options.sas_file).parent).mkdir(parents=True, exist_ok=True)
-        with open(os.path.join(pathlib.Path(options.sas_file).parent, f'{name}.pkl'), 'wb') as file:
-            pickle.dump(chart, file)
-        if options.queue_pushes_dump_chart:
-            try:
-                import matplotlib.pyplot as plt
-                plt.clf()
-                plt.plot(*zip(*chart))
-                plt.yscale('log')
-                plt.savefig(os.path.join(pathlib.Path(options.sas_file).parent, f'{name}.svg'))
-            except Exception as err:
-                print(err)
+        with open(os.path.join(pathlib.Path(options.sas_file).parent, f'{name}.json'), 'wb') as file:
+            json.dump(chart, file)
 
 def compute_model(prog):
     with timers.timing("Preparing model"):
@@ -381,7 +372,7 @@ def compute_model(prog):
             for rule, cond_index in matches:
                 rule.update_index(next_atom, cond_index)
                 rule.fire(next_atom, cond_index, queue.push)
-
+    queue.queue.remove(marker)
     dump_chart(grounding_width_bin)
     if options.queue_pushes_per_action_dump:
         dump_chart(grounding_width_bin, name='other')

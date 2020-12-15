@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy
 import pathlib
 import argparse
-import pickle
+import json
 import os
 from scipy.optimize import curve_fit
 import math
@@ -20,9 +20,9 @@ if __name__ == "__main__":
         help="path to the SAS output file (default: %(default)s)")
 
     args= argparser.parse_args()
-    for file_path in pathlib.Path(args.folder).glob('*.pkl'):
+    for file_path in pathlib.Path(args.folder).glob('*.json'):
         with open(file_path, 'rb') as file:
-            chart = pickle.load(file)
+            chart = json.load(file)
             xy=list(zip(*chart))
             x = list(xy[0])
             y = list(xy[1])
