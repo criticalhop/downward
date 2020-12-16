@@ -12,6 +12,9 @@ import json
 import pathlib
 import os.path
 import collections
+import math
+import numpy
+
 
 def convert_rules(prog):
     RULE_TYPES = {
@@ -307,6 +310,24 @@ def dump_chart(chart, name="all_actions"):
         with open(os.path.join(pathlib.Path(options.sas_file).parent, f'{name}.json'), 'wb') as file:
             json.dump(chart, file)
 
+
+def f_exp_s(x, a, b):
+    return math.exp(b) * math.exp(a * x)
+
+def calculate_R_squared(chart):
+    xy=list(zip(*chart))
+    x = list(xy[0])
+    y = list(xy[1])
+    ab = numpy.polyfit(x, numpy.log(y), 1, w=numpy.sqrt(y))
+    ypf = numpy.array([f_exp_s(xx, *ab) for xx in x])
+    residuals = y - ypf
+    ss_res = numpy.sum(residuals**2)
+    ss_tot = numpy.sum((y-numpy.mean(y))**2)
+    r_squared = 1 - (ss_res / ss_tot)
+    return r_squared
+
+R_squared_limit=0.95
+
 def compute_model(prog):
     with timers.timing("Preparing model"):
         rules = convert_rules(prog)
@@ -343,6 +364,7 @@ def compute_model(prog):
             next_atom = queue.pop()
             if options.queue_pushes_dump:
                 if next_atom is marker:
+                    
                     if options.queue_pushes_per_action_dump:
                         per_action = {}
                         other = [queue_loop,0]
@@ -356,9 +378,17 @@ def compute_model(prog):
                         for action_name in per_action:
                             grounding_width_per_action[action_name].append(per_action[action_name])
                         grounding_width_other.append(other)
-
                     grounding_width_bin.append((queue_loop, queue.num_pushes))
                     queue_loop += 1
+                    if options.optimizer_mode and (queue_loop > 40):
+                        ok = {}
+                        if calculate_R_squared(grounding_width_bin) > R_squared_limit:
+                            if options.queue_pushes_per_action_dump:
+                                for action_name in grounding_width_per_action:
+                                    if len(grounding_width_per_action[action_name]) < 10:
+                                        continue
+                                    ok[action_name] = calculate_R_squared(grounding_width_per_action[action_name]) > R_squared_limit
+
                     print("queue pushes %d loop %d" % (queue.num_pushes, queue_loop))
                     cont = True
                     continue

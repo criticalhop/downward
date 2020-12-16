@@ -4,7 +4,7 @@ import pathlib
 import argparse
 import json
 import os
-from scipy.optimize import curve_fit
+# from scipy.optimize import curve_fit
 import math
 def f_exp(x, a, b, c):
     return a * numpy.exp(-b * x) +c
@@ -26,7 +26,7 @@ if __name__ == "__main__":
             xy=list(zip(*chart))
             x = list(xy[0])
             y = list(xy[1])
-            popt, pcov = curve_fit(f_exp, x, y)
+            # popt, pcov = curve_fit(f_exp, x, y)
             ab = numpy.polyfit(x, numpy.log(y), 1, w=numpy.sqrt(y))
             # y ≈ exp(ab[1]) * exp(ab[0] * x)
             plt.clf()

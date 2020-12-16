@@ -63,6 +63,10 @@ def parse_args():
         "--queue_pushes_per_action_dump",
         dest="queue_pushes_per_action_dump", action="store_true",
         help="keep facts that can't be reached from the initial state")
+    argparser.add_argument(
+        "--optimizer_mode",
+        dest="optimizer_mode", action="store_true",
+        help="keep facts that can't be reached from the initial state")
     return argparser.parse_args()
 
 
