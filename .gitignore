@@ -1,3 +1,25 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*.ipynb
+*.plan
+.vscode/
+*.json
+domain.pddl
+problem.pddl
+*.SAS
+*.sas
+rules_file
+relevant_rules
+useful_rules_*
+rule_usefulness_*
+all_operators*
+*.zip
+*.f
+*.b
+*.n
+*.model
+*.txt
+*.log
+*.csv
+sas_plan
