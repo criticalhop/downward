@@ -44,34 +44,6 @@ for hyperc_rundir in os.listdir(cur_dir):
     # 1. prepare safe translation map for predicates
     domain_file = f"{cur_dir}/{hyperc_rundir}/domain.pddl"
     problem_file = f"{cur_dir}/{hyperc_rundir}/problem.pddl"
-    """
-    # Untested code
-    domain_lisp = lisp_to_list(open(domain_file).read())
-    # scan predicates
-    pred_trans_map = {}
-    for l in domain_lisp:
-        if type(l) != list: continue
-        # 1. fix predicates
-        elif l[0] == ":predicates":
-            predicates = l[1:]
-            for predicate in predicates:
-                pred_name = predicate[0]
-                predicate[0] = clean_id(pred_name)
-                pred_trans_map[pred_name] = predicate[0]
-        # 2. safely scan thruough actions, action bodies
-        elif l[0] == ":action":
-            action = l
-            action[1] = clean_id(action[1])
-            preconditions = action[5][1:] # skip (and ...)
-            clean_pc_list(preconditions)
-            effects = action[7][1:]
-            clean_pc_list(effects)
-    # now write the new file into export folder
-    
-    # now clean problem file: the predicate names from above
-    problem_lisp = lisp_to_list(open(problem_file).read())
-
-    """
 
     for solve_attempt_dir in os.listdir(abspath):
         # fd_i = open(sys.argv[1])
@@ -89,7 +61,6 @@ for hyperc_rundir in os.listdir(cur_dir):
                     is_op = 1
             else:
                 opl = l.split()
-                # op_schema_name = clean_id(opl[0])
                 op_schema_name = (opl[0])
                 op_arguments = ",".join(opl[1:])
                 all_op_line = f"{op_schema_name}({op_arguments})\n"
@@ -104,7 +75,6 @@ for hyperc_rundir in os.listdir(cur_dir):
 
         for l in fd_plan:
             opl = l.split()
-            # op_schema_name = clean_id(opl[0])
             op_schema_name = (opl[0])
             op_arguments = " ".join(opl[1:])
             all_op_line = f"{op_schema_name} {op_arguments}\n"
@@ -116,11 +86,3 @@ for hyperc_rundir in os.listdir(cur_dir):
         
 copy(domain_file, cur_dir)
 
-
-# TODO HERE: process domain.pddl the same way: names + predicates!! only object names remain as-is
-# TODO HERE: process problem.pddl too
-
-# TODO input the hyperc log folders, create a packaged folder in current? directory
-
-# os.system('cat ./all_operators_raw | sed "s/[0-9]\{15\}//g" | sed "s/[0-9]\{8\}//g" > ./all_operators')
-# os.system('cat ./out.plan | sed "s/[0-9]\{15\}//g" | sed "s/[0-9]\{8\}//g" > ./sas_plan')
