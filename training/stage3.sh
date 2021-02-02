@@ -4,4 +4,5 @@
 # python3 ../src/subdominization-training/learning/select_features.py --training-folder training_data --selector-type LOGRCV 
 
 # python3 ../src/subdominization-training/learning/select_features.py --training-folder training_data --selector-type LINR
+# python3 ../src/subdominization-training/learning/select_features.py --training-folder training_data --selector-type RF_RG
 python3 ../src/subdominization-training/learning/select_features.py --training-folder training_data --selector-type SVR

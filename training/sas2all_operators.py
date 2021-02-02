@@ -82,7 +82,6 @@ for i, hyperc_rundir in enumerate(all_files):
             print("Processing plan file")
             for l in fd_plan:
                 opl = l.split()
-                # op_schema_name = clean_id(opl[0])
                 op_schema_name = (opl[0])
                 op_arguments = " ".join(opl[1:])
                 all_op_line = f"{op_schema_name} {op_arguments}\n"
@@ -97,11 +96,3 @@ for i, hyperc_rundir in enumerate(all_files):
         
 copy(domain_file, cur_dir)
 
-
-# TODO HERE: process domain.pddl the same way: names + predicates!! only object names remain as-is
-# TODO HERE: process problem.pddl too
-
-# TODO input the hyperc log folders, create a packaged folder in current? directory
-
-# os.system('cat ./all_operators_raw | sed "s/[0-9]\{15\}//g" | sed "s/[0-9]\{8\}//g" > ./all_operators')
-# os.system('cat ./out.plan | sed "s/[0-9]\{15\}//g" | sed "s/[0-9]\{8\}//g" > ./sas_plan')
