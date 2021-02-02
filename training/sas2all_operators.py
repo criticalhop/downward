@@ -34,9 +34,11 @@ def clean_pc_list(pc_list):
         else:
             precondition[0] = clean_id(precondition[0])
 
+all_files = os.listdir(cur_dir)
 
-for hyperc_rundir in os.listdir(cur_dir):
+for i, hyperc_rundir in enumerate(all_files):
     abspath = f"{cur_dir}/{hyperc_rundir}"
+    print(f"Entering {abspath}, processing {i} of {len(all_files)}")
     if not os.path.isdir(abspath): continue
     # TODO HERE: process problem and domain files
     # lowercase everything for prolog!!!
@@ -44,75 +46,54 @@ for hyperc_rundir in os.listdir(cur_dir):
     # 1. prepare safe translation map for predicates
     domain_file = f"{cur_dir}/{hyperc_rundir}/domain.pddl"
     problem_file = f"{cur_dir}/{hyperc_rundir}/problem.pddl"
-    """
-    # Untested code
-    domain_lisp = lisp_to_list(open(domain_file).read())
-    # scan predicates
-    pred_trans_map = {}
-    for l in domain_lisp:
-        if type(l) != list: continue
-        # 1. fix predicates
-        elif l[0] == ":predicates":
-            predicates = l[1:]
-            for predicate in predicates:
-                pred_name = predicate[0]
-                predicate[0] = clean_id(pred_name)
-                pred_trans_map[pred_name] = predicate[0]
-        # 2. safely scan thruough actions, action bodies
-        elif l[0] == ":action":
-            action = l
-            action[1] = clean_id(action[1])
-            preconditions = action[5][1:] # skip (and ...)
-            clean_pc_list(preconditions)
-            effects = action[7][1:]
-            clean_pc_list(effects)
-    # now write the new file into export folder
-    
-    # now clean problem file: the predicate names from above
-    problem_lisp = lisp_to_list(open(problem_file).read())
 
-    """
+    try:
+        for solve_attempt_dir in os.listdir(abspath):
+            # fd_i = open(sys.argv[1])
+            abssubpath = f"{abspath}/{solve_attempt_dir}"
+            print(f"Entering {abssubpath}")
+            if not os.path.isdir(abssubpath): continue
+            output_sas_file = f"{abssubpath}/output.sas"
+            all_operators_file = f"{abspath}/all_operators"
+            fd_i = open(output_sas_file)
+            fd_o = open(all_operators_file, "w+")
 
-    for solve_attempt_dir in os.listdir(abspath):
-        # fd_i = open(sys.argv[1])
-        abssubpath = f"{abspath}/{solve_attempt_dir}"
-        if not os.path.isdir(abssubpath): continue
-        output_sas_file = f"{abssubpath}/output.sas"
-        all_operators_file = f"{abspath}/all_operators"
-        fd_i = open(output_sas_file)
-        fd_o = open(all_operators_file, "w+")
+            is_op = 0
+            print("Processing", output_sas_file)
+            for l in fd_i:
+                if not is_op:
+                    if l.startswith("begin_operator"):
+                        is_op = 1
+                else:
+                    opl = l.split()
+                    # op_schema_name = clean_id(opl[0])
+                    op_schema_name = (opl[0])
+                    op_arguments = ",".join(opl[1:])
+                    all_op_line = f"{op_schema_name}({op_arguments})\n"
+                    fd_o.write(all_op_line)
+                    is_op = 0
 
-        is_op = 0
-        for l in fd_i:
-            if not is_op:
-                if l.startswith("begin_operator"):
-                    is_op = 1
-            else:
+            fd_i.close()
+            fd_o.close()
+
+            fd_plan = open(f"{abssubpath}/out.plan")
+            fd_sas_plan = open(f"{abspath}/sas_plan", "w+")
+
+            print("Processing plan file")
+            for l in fd_plan:
                 opl = l.split()
                 # op_schema_name = clean_id(opl[0])
                 op_schema_name = (opl[0])
-                op_arguments = ",".join(opl[1:])
-                all_op_line = f"{op_schema_name}({op_arguments})\n"
-                fd_o.write(all_op_line)
-                is_op = 0
+                op_arguments = " ".join(opl[1:])
+                all_op_line = f"{op_schema_name} {op_arguments}\n"
+                fd_sas_plan.write(all_op_line)
 
-        fd_i.close()
-        fd_o.close()
-
-        fd_plan = open(f"{abssubpath}/out.plan")
-        fd_sas_plan = open(f"{abspath}/sas_plan", "w+")
-
-        for l in fd_plan:
-            opl = l.split()
-            # op_schema_name = clean_id(opl[0])
-            op_schema_name = (opl[0])
-            op_arguments = " ".join(opl[1:])
-            all_op_line = f"{op_schema_name} {op_arguments}\n"
-            fd_sas_plan.write(all_op_line)
-
-        with open(all_operators_file, 'rb') as input:
-            with bz2.BZ2File(f"{all_operators_file}.bz2", 'wb', compresslevel=9) as output:
-                copyfileobj(input, output)
+            # print("Compressing the file")
+            # with open(all_operators_file, 'rb') as input:
+            #     with bz2.BZ2File(f"{all_operators_file}.bz2", 'wb', compresslevel=9) as output:
+            #         copyfileobj(input, output)
+    except FileNotFoundError:
+        pass
         
 copy(domain_file, cur_dir)
 

@@ -106,6 +106,7 @@ def read_runs_folder(runs_folder):
      ini_predicates = set()
      goal_predicates = set()
      for task_run in sorted(os.listdir(runs_folder)):
+          print("Parsing", task_run)
           if not os.path.isfile('{}/{}/{}'.format(runs_folder, task_run, 'sas_plan')):
                continue
 

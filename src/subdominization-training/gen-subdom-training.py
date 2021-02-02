@@ -125,53 +125,56 @@ if __name__ == "__main__":
     testing_instances = np.random.choice(all_instances, int(options.num_test_instances), replace=False)
 
     for task_run in all_instances:        
-        print ("Processing ", task_run)
-        is_test_instance = task_run in testing_instances
-        domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
-        task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
-        plan_filename = '{}/{}/{}'.format(options.runs_folder, task_run, operators_filename)
+        try:
+            print ("Processing ", task_run)
+            is_test_instance = task_run in testing_instances
+            domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
+            task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")
+            plan_filename = '{}/{}/{}'.format(options.runs_folder, task_run, operators_filename)
 
-        domain_pddl = parse_pddl_file("domain", domain_filename)
-        task_pddl = parse_pddl_file("task", task_filename)
+            domain_pddl = parse_pddl_file("domain", domain_filename)
+            task_pddl = parse_pddl_file("task", task_filename)
 
-        all_operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
-           
-        task = parsing_functions.parse_task(domain_pddl, task_pddl)
-    
-        re = RulesEvaluator(relevant_rules, task)
-
-        #relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+            all_operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
+            
+            task = parsing_functions.parse_task(domain_pddl, task_pddl)
         
-        with open(plan_filename) as plan_file:
-            plan = set(map (lambda x : tuple(x.replace("\n", "").replace(")", "").replace("(", "").split(" ")), plan_file.readlines()))
-            skip_schemas_training = [schema for schema, examples in training_lines.items() if len(examples) >= options.max_training_examples]
-            skip_schemas_testing = [schema for schema, examples in testing_lines.items() if len(examples) >= options.max_training_examples]
-            with bz2.BZ2File(all_operators_filename, "r") as actions:
-            # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
-                for action in actions:
-                    action = action.decode("utf-8")
-                    schema, arguments = action.split("(")
-                    if not is_test_instance and schema in skip_schemas_training:
-                        continue
-                    if is_test_instance and schema in skip_schemas_testing:
-                        continue
-                    
-                    
-                    arguments = list(map(lambda x: x.strip(), arguments.strip()[:-1].split(",")))
-                   
-                    is_in_plan = 1 if  tuple([schema] + arguments) in plan else 0
-                   
-                    eval = re.evaluate(schema, arguments)
-                    #print( ",".join(map (str, [action.name] + eval + [is_in_plan])) )
-                
-                    new_line = ",".join(map (str, eval + [is_in_plan]))
-                    if options.debug_info:
-                        new_line = ",".join([task_run, action, new_line])
+            re = RulesEvaluator(relevant_rules, task)
 
-                    if is_test_instance:
-                        testing_lines [schema].append(new_line)
-                    else:
-                        training_lines [schema].append(new_line)
+            #relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+            
+            with open(plan_filename) as plan_file:
+                plan = set(map (lambda x : tuple(x.replace("\n", "").replace(")", "").replace("(", "").split(" ")), plan_file.readlines()))
+                skip_schemas_training = [schema for schema, examples in training_lines.items() if len(examples) >= options.max_training_examples]
+                skip_schemas_testing = [schema for schema, examples in testing_lines.items() if len(examples) >= options.max_training_examples]
+                with bz2.BZ2File(all_operators_filename, "r") as actions:
+                # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+                    for action in actions:
+                        action = action.decode("utf-8")
+                        schema, arguments = action.split("(")
+                        if not is_test_instance and schema in skip_schemas_training:
+                            continue
+                        if is_test_instance and schema in skip_schemas_testing:
+                            continue
+                        
+                        
+                        arguments = list(map(lambda x: x.strip(), arguments.strip()[:-1].split(",")))
+                    
+                        is_in_plan = 1 if  tuple([schema] + arguments) in plan else 0
+                    
+                        eval = re.evaluate(schema, arguments)
+                        #print( ",".join(map (str, [action.name] + eval + [is_in_plan])) )
+                    
+                        new_line = ",".join(map (str, eval + [is_in_plan]))
+                        if options.debug_info:
+                            new_line = ",".join([task_run, action, new_line])
+
+                        if is_test_instance:
+                            testing_lines [schema].append(new_line)
+                        else:
+                            training_lines [schema].append(new_line)
+        except OSError:
+            pass
     
     if testing_lines:
         os.makedirs('{}/training'.format(options.store_training_data))

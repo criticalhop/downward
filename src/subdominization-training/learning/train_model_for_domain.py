@@ -37,34 +37,37 @@ def train_model(model_folder, training_folder, model_type, keep_duplicate_featur
     
     # generate models and save to file
     for file in os.listdir(training_folder):
-        curr_file = os.path.join(training_folder, file)
-        if (os.path.isfile(curr_file) and (file.endswith(".csv") or file.endswith(".csv.bz2"))):
-            name = file[:-4] + ".model" if file.endswith(".csv") else file[:-8]
-            model_file = os.path.join(model_folder, name)
-            
-            if (os.path.isfile(model_file)): # query the user if overwrite file
-                if (not yes_to_all and overwrite_existing_files == None):
-                    if (is_python_3):
-                        response = input("overwrite existing model files? y/N")
+        try:
+            curr_file = os.path.join(training_folder, file)
+            if (os.path.isfile(curr_file) and (file.endswith(".csv") or file.endswith(".csv.bz2"))):
+                name = file[:-4] + ".model" if file.endswith(".csv") else file[:-8]
+                model_file = os.path.join(model_folder, name)
+                
+                if (os.path.isfile(model_file)): # query the user if overwrite file
+                    if (not yes_to_all and overwrite_existing_files == None):
+                        if (is_python_3):
+                            response = input("overwrite existing model files? y/N")
+                        else:
+                            response = raw_input("overwrite existing model files? y/N")
+                        if (not response in ["no", "No", "NO", "n", "N"]):
+                            overwrite_existing_files = True
+                        else:
+                            overwrite_existing_files = False
+                    if (yes_to_all or overwrite_existing_files):
+                        os.remove(model_file)
                     else:
-                        response = raw_input("overwrite existing model files? y/N")
-                    if (not response in ["no", "No", "NO", "n", "N"]):
-                        overwrite_existing_files = True
-                    else:
-                        overwrite_existing_files = False
-                if (yes_to_all or overwrite_existing_files):
-                    os.remove(model_file)
-                else:
-                    print("file already exists", model_file)
-                    sys.exit(1)
-            
-            print("training model from file ", curr_file)
-            learned_model = LearnRules(training_file=curr_file, modelType=model_type, njobs=1, remove_duplicate_features=not keep_duplicate_features, take_max_for_duplicates=not mean_over_duplicates)
-            if (not learned_model.is_empty):
-                print("writing model to file ", model_file, end="")
-                learned_model.saveToDisk(model_file)
-                print(" .. done")
-            print()
+                        print("file already exists", model_file)
+                        sys.exit(1)
+                
+                print("training model from file ", curr_file)
+                learned_model = LearnRules(training_file=curr_file, modelType=model_type, njobs=1, remove_duplicate_features=not keep_duplicate_features, take_max_for_duplicates=not mean_over_duplicates)
+                if (not learned_model.is_empty):
+                    print("writing model to file ", model_file, end="")
+                    learned_model.saveToDisk(model_file)
+                    print(" .. done")
+                print()
+        except ValueError:
+            print("COULD NOT PROCESS THE FILE")
     
 
 def train_wrapper(model, lab_configs):

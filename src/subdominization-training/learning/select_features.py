@@ -339,32 +339,35 @@ def main():
     usefulness = defaultdict(list)
     
     for file in os.listdir(args.training_folder):
-        curr_file = os.path.join(args.training_folder, file)
-        if (os.path.isfile(curr_file) and (file.endswith(".csv.bz2") or file.endswith(".csv"))):
-            action_schema = file[:-8] if file.endswith(".csv.bz2") else file[:-4]
-            print("handling action schema %s" % action_schema)
-            
-            dataset = helpers.get_dataset_from_csv(curr_file, args.keep_duplicate_features, not args.mean_over_duplicates)
+        try:
+            curr_file = os.path.join(args.training_folder, file)
+            if (os.path.isfile(curr_file) and (file.endswith(".csv.bz2") or file.endswith(".csv"))):
+                action_schema = file[:-8] if file.endswith(".csv.bz2") else file[:-4]
+                print("handling action schema %s" % action_schema)
                 
-            selector = FeatureSelector(dataset, args.selector_type)
-            
-            usefulness[action_schema] = sorted([(rank, i) for i, rank in enumerate(selector.get_feature_ranking())])
-            usefulness[action_schema].reverse()
-            
-            max_eval = usefulness[action_schema][0][0]
-            fifth_eval = usefulness[action_schema][4][0] if len(usefulness[action_schema]) >= 5 else usefulness[action_schema][-1][0]
-            num_useful_rules = 0
-            
-            for rank, i in usefulness[action_schema]:
-                print("%0.2f \t %s" % (rank, relevant_rules[action_schema][i]), end="")
-                if (rank >= 0.01 and (rank > max_eval / 10 or num_useful_rules < 5)):# or rank > fifth_eval / 2)):
-                    useful_rules[action_schema].append(relevant_rules[action_schema][i])
-                    num_useful_rules += 1
-                    print(" is useful")
-                else:
-                    print()
-            
-            print()
+                dataset = helpers.get_dataset_from_csv(curr_file, args.keep_duplicate_features, not args.mean_over_duplicates)
+                    
+                selector = FeatureSelector(dataset, args.selector_type)
+                
+                usefulness[action_schema] = sorted([(rank, i) for i, rank in enumerate(selector.get_feature_ranking())])
+                usefulness[action_schema].reverse()
+                
+                max_eval = usefulness[action_schema][0][0]
+                fifth_eval = usefulness[action_schema][4][0] if len(usefulness[action_schema]) >= 5 else usefulness[action_schema][-1][0]
+                num_useful_rules = 0
+                
+                for rank, i in usefulness[action_schema]:
+                    print("%0.2f \t %s" % (rank, relevant_rules[action_schema][i]), end="")
+                    if (rank >= 0.01 and (rank > max_eval / 10 or num_useful_rules < 5)):# or rank > fifth_eval / 2)):
+                        useful_rules[action_schema].append(relevant_rules[action_schema][i])
+                        num_useful_rules += 1
+                        print(" is useful")
+                    else:
+                        print()
+                
+                print()
+        except ValueError:
+            print("ERORR!! Can't pase the file")
     
     usefulness_file = os.path.join(args.training_folder, "rule_usefulness_" + args.selector_type.lower())
     write = True
