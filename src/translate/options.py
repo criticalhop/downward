@@ -78,5 +78,5 @@ def setup():
     args = parse_args()
     copy_args_to_module(args)
 
-
-setup()
+if not hasattr(sys, "nosetup"):
+    setup()

@@ -32,7 +32,8 @@ for s_act in open("./domain.pddl").read().split(":action")[1:]:
 
 filtered_rules = []
 
-for l in open("./rules_file").readlines():
+# CHANGE BELOW >>>>>>
+for l in open("./rules_file3").readlines():
     relevant = True
     for act_name, values in action_name_planlen_par.items():
         if act_name in l:
@@ -46,4 +47,4 @@ for l in open("./rules_file").readlines():
     if relevant == True:
         filtered_rules.append(l)
 
-open("./rules_file_noplan", "w+").write("".join(filtered_rules))
+open("./rules_file_noplan_r3", "w+").write("".join(filtered_rules))

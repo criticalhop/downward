@@ -1,8 +1,10 @@
 #! /usr/bin/env python3
 
 
+import os
 import sys
 import itertools
+import time
 
 import pddl
 import subdominization.priority_queue as pq
@@ -332,23 +334,47 @@ def compute_model(prog, task = None):
     queue.print_info()
     termination_condition = tc.get_termination_condition_from_options()
     termination_condition.print_info()
-    
+
+    ts = time.time()
+    i_pushes = 0
+
     with timers.timing("Computing model"):
         relevant_atoms = 0
         auxiliary_atoms = 0
         goal_reached = False
-        while queue or (queue.has_actions() and not termination_condition.terminate()):
-            next_atom = queue.pop()  
-            pred = next_atom.predicate
-            if isinstance(pred, str) and "$" in pred:
-                auxiliary_atoms += 1
+        try:
+            while queue or (queue.has_actions() and not termination_condition.terminate()):
+                if relevant_atoms % 100 == 0:
+                    print(relevant_atoms, auxiliary_atoms, i_pushes/(time.time()-ts), "pushes/s")
+                    ts = time.time()
+                    i_pushes = 0
+                if relevant_atoms % 1000 == 0 and termination_condition.goal_reached:
+                    if os.fork() == 0:
+                        print(f"Dumping partial grounding with {relevant_atoms} atoms ...")
+                        break
+                next_atom = queue.pop()  
+                if hasattr(next_atom, "_estimate"):
+                    print("TOP:", next_atom._estimate)
+                pred = next_atom.predicate
+                if isinstance(pred, str) and "$" in pred:
+                    auxiliary_atoms += 1
+                else:
+                    relevant_atoms += 1
+                    termination_condition.notify_atom(next_atom)
+                matches = unifier.unify(next_atom)
+                # if len(matches) > 100:
+                    # print("Estimating", len(matches))
+                for rule, cond_index in matches:
+                    rule.update_index(next_atom, cond_index)
+                    rule.fire(next_atom, cond_index, queue.push)
+                    i_pushes += 1
+        except KeyboardInterrupt:
+            if termination_condition.goal_reached:
+                print(f"Interrupt! Will try to output partial grounding...")
             else:
-                relevant_atoms += 1
-                termination_condition.notify_atom(next_atom)
-            matches = unifier.unify(next_atom)
-            for rule, cond_index in matches:
-                rule.update_index(next_atom, cond_index)
-                rule.fire(next_atom, cond_index, queue.push)
+                print(f"Interrupt! Goal unreachable from current world. Exit.")
+                sys.exit()
+
     queue.print_stats()
     print("%d relevant atoms" % relevant_atoms)
     print("%d auxiliary atoms" % auxiliary_atoms)

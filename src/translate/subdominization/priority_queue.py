@@ -143,6 +143,7 @@ class TrainedQueue(PriorityQueue):
 #             print(")")
     def push(self, action):
         estimate = self.model.get_estimate(action)
+        action._estimate = estimate  # FIXME: remove
         if (estimate == None):
             estimate = randint(0, 100) / 100
         self.queue.push(action, 1 - estimate)

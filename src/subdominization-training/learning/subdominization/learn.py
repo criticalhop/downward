@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 
 import sklearn
+import autosklearn.classification
+import autosklearn.metrics
 
 from sklearn.pipeline import make_pipeline
 import matplotlib.pyplot as plt
@@ -39,6 +41,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neighbors import KNeighborsRegressor
 
+from sklearn.dummy import DummyClassifier
+
 from sklearn import metrics
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
@@ -53,6 +57,7 @@ randBinList = lambda n: [randint(0,1) for b in range(1,n+1)]
 import helpers
 
 
+from IPython import embed
 
 
 
@@ -110,7 +115,21 @@ class LearnRules():
     
             X_std = scaler.fit_transform(X)
             
-            if (modelType=='LOGR'):
+            if max(y) == 0:
+                print(training_file, "was never used, returning zero classifier")
+                #negative = DummyClassifier(strategy="constant", constant=[1,0])
+                negative = DummyClassifier(strategy="constant", constant=0)
+                #negative.n_outputs_ = 2
+                self.model = negative.fit(X_std, y)
+                self.is_classifier = True
+            elif min(y) == 1:
+                print(training_file, "WARNING! always needed! returning TRUE classifier. Check your data!")
+                #negative = DummyClassifier(strategy="constant", constant=[0,1])
+                negative = DummyClassifier(strategy="constant", constant=1)
+                #negative.n_outputs_ = 2
+                self.model = negative.fit(X_std, y)
+                self.is_classifier = True
+            elif (modelType=='LOGR'):
                 # Create decision tree classifer object
                 clf = LogisticRegression(random_state=0,
                                          class_weight='balanced' if self.isBalanced else None)
@@ -262,6 +281,27 @@ class LearnRules():
                 clf = KernelRidge()     
                 self.model =clf.fit(X_std , y)
                 #print self.model.predict_proba(self.X_test) 
+            elif (modelType=='AUTO'):
+                automl = autosklearn.classification.AutoSklearnClassifier(
+                    time_left_for_this_task=500,
+                    per_run_time_limit=160,
+                    #time_left_for_this_task=60,
+                    #per_run_time_limit=30,
+                    tmp_folder='/tmp/autosklearn_regression_tmp_'+training_file.replace("/", "")+str(os.getpid()),
+                    output_folder='./autosklearn_regression_out_'+training_file.replace("/","")+str(os.getpid()),
+                    memory_limit=30720,
+                    #metric=autosklearn.metrics.accuracy
+                    #metric=autosklearn.metrics.f1
+                    metric=autosklearn.metrics.average_precision
+                )
+                self.model = automl.fit(X_std, y, dataset_name='hyperc')
+                self.is_classifier = True
+                predictions = automl.predict(X_test)
+                # print(X_test, y_test, predictions)
+
+                print("Accuracy score {:g} using {:s}".
+                    format(sklearn.metrics.accuracy_score(y_test, list(predictions)),
+                            automl.automl_._metric.name))
             else:
                 SyntaxError("Error in modelType = 'LRCV', 'LG', 'RF', 'SVM', 'SVMCV', 'NBB', 'NBG' , 'DT'; \nLogistic Regression, Logistic Regression with Cross Validation, \nRandom Forest or Support Vector Machine with CV, \n DT  is decision Tree ")
         else:

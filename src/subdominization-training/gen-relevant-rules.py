@@ -53,32 +53,40 @@ if __name__ == "__main__":
 
     training_re = RuleTrainingEvaluator(options.training_rules.readlines())
     i = 1
-    for task_run in sorted(os.listdir(options.runs_folder)):
-        if i > options.instances_relevant_rules:
-             break
-        if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, 'sas_plan')):
-            continue
+    try:
+        for task_run in sorted(os.listdir(options.runs_folder)):
+            if i > options.instances_relevant_rules:
+                break
+            if not os.path.isfile('{}/{}/{}'.format(options.runs_folder, task_run, 'sas_plan')):
+                continue
 
-        print (i)
-        i += 1
-        
-        
-        domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
-        task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")        
-        domain_pddl = parse_pddl_file("domain", domain_filename)
-        task_pddl = parse_pddl_file("task", task_filename)
-        task = parsing_functions.parse_task(domain_pddl, task_pddl)
-        
-        training_re.init_task(task, options.max_training_examples)
+            i += 1
+            
+            
+            domain_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "domain.pddl")
+            task_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "problem.pddl")        
+            domain_pddl = parse_pddl_file("domain", domain_filename)
+            task_pddl = parse_pddl_file("task", task_filename)
+            task = parsing_functions.parse_task(domain_pddl, task_pddl)
+            
+            training_re.init_task(task, options.max_training_examples)
 
-        operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
+            operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
+            print("Processing", operators_filename)
 
-        with bz2.BZ2File(operators_filename, "r") as actions:
-            # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
-            for action in actions:
-                training_re.evaluate(action.strip())                
+            with bz2.BZ2File(operators_filename, "r") as actions:
+                # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+                for action in actions:
+                    # print("ACTION", action)
+                    saction = action.strip().decode("UTF-8")
+                    if saction[-1] != ")":
+                        print("TRUNC", saction)
+                        continue
+                    training_re.evaluate(saction)                
+    except KeyboardInterrupt:
+        pass
 
-    training_re.print_statistics()  
+    # training_re.print_statistics()  
 
     relevant_rules = training_re.get_relevant_rules()
     #print ("Relevant rules: ", len(relevant_rules))

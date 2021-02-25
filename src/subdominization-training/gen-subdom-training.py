@@ -94,7 +94,11 @@ if __name__ == "__main__":
             with bz2.BZ2File(all_operators_filename, "r") as actions:
                 # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
                 for action in actions:
-                    training_re.evaluate(action.strip())                
+                    saction = action.strip()
+                    if saction[-1] != ")":
+                        print("TRUNC", saction)
+                        continue
+                    training_re.evaluate(saction)                
 
             # for action in actions:
             #     training_re.evaluate(action)                
@@ -151,6 +155,10 @@ if __name__ == "__main__":
                 # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
                     for action in actions:
                         action = action.decode("utf-8")
+                        saction = action.strip()
+                        if saction[-1] != ")":
+                            print("TRUNC", saction)
+                            continue
                         schema, arguments = action.split("(")
                         if not is_test_instance and schema in skip_schemas_training:
                             continue
@@ -175,7 +183,9 @@ if __name__ == "__main__":
                             training_lines [schema].append(new_line)
         except OSError:
             pass
-    
+        except KeyboardInterrupt:
+            break
+    print("Creating training matrices") 
     if testing_lines:
         os.makedirs('{}/training'.format(options.store_training_data))
 

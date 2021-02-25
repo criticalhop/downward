@@ -37,7 +37,8 @@ def train_model(model_folder, training_folder, model_type, keep_duplicate_featur
     
     # generate models and save to file
     for file in os.listdir(training_folder):
-        try:
+        # try:
+        if 1:
             curr_file = os.path.join(training_folder, file)
             if (os.path.isfile(curr_file) and (file.endswith(".csv") or file.endswith(".csv.bz2"))):
                 name = file[:-4] + ".model" if file.endswith(".csv") else file[:-8]
@@ -66,8 +67,8 @@ def train_model(model_folder, training_folder, model_type, keep_duplicate_featur
                     learned_model.saveToDisk(model_file)
                     print(" .. done")
                 print()
-        except ValueError:
-            print("COULD NOT PROCESS THE FILE")
+        # except ValueError:
+            # print("COULD NOT PROCESS THE FILE")
     
 
 def train_wrapper(model, lab_configs):

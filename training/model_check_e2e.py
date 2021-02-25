@@ -16,6 +16,8 @@ import lisp_parser
 import shutil
 import bz2
 
+from IPython import embed
+
 try:
     # Python 3.x
     from builtins import open as file_open
@@ -78,6 +80,7 @@ if __name__ == "__main__":
     np.random.seed(2018)
     testing_instances = np.random.choice(all_instances, int(options.num_test_instances), replace=False)
 
+    model = None
 
 
     for task_run in all_instances:        
@@ -94,7 +97,12 @@ if __name__ == "__main__":
             all_operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
             
             task = parsing_functions.parse_task(domain_pddl, task_pddl)
-            model = TrainedModel(options.trained_model_folder, task)
+            if model is None:
+                model = TrainedModel(options.trained_model_folder, task)
+            else:
+                model.ruleEvaluator = RulesEvaluator(relevant_rules, task)
+
+            # embed()
         
             re = RulesEvaluator(relevant_rules, task)
 
@@ -102,36 +110,52 @@ if __name__ == "__main__":
             
             with open(plan_filename) as plan_file:
                 plan = set(map (lambda x : tuple(x.replace("\n", "").replace(")", "").replace("(", "").split(" ")), plan_file.readlines()))
-                skip_schemas_training = [schema for schema, examples in training_lines.items() if len(examples) >= options.max_training_examples]
-                skip_schemas_testing = [schema for schema, examples in testing_lines.items() if len(examples) >= options.max_training_examples]
-                with bz2.BZ2File(all_operators_filename, "r") as actions:
-                # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
-                    for action in actions:
-                        action = action.decode("utf-8")
-                        saction = action.strip()
-                        if saction[-1] != ")":
-                            print("TRUNC", saction)
-                            continue
-                        schema, arguments = action.split("(")
-                        if not is_test_instance and schema in skip_schemas_training:
-                            continue
-                        if is_test_instance and schema in skip_schemas_testing:
-                            continue
-                        
-                        
-                        arguments = list(map(lambda x: x.strip(), arguments.strip()[:-1].split(",")))
-                    
-                        is_in_plan = 1 if  tuple([schema] + arguments) in plan else 0
-                    
-                        eval = re.evaluate(schema, arguments)
-                        print( ",".join(map (str, [schema] + eval + [is_in_plan])) )
+                for step in plan:
+                    # print(plan)
+                    schema = step[0]
+                    if len(schema) < 5: continue
+                    arguments = list(step[1:])
+                    # arguments = list(map(lambda x: x.strip(), arguments.strip()[:-1].split(",")))
+                    eval = re.evaluate(schema, arguments)
+                    print( ",".join(map (str, [schema] + eval )) )
 
-                        # Now run result with the model
-                        if model.model[schema].is_classifier:
-                            est = model.model[schema].model.predict_proba([eval])
-                        else:
-                            est = model.model[schema].model.predict([eval])
-                        print(" --- ", est)
+                    # Now run result with the model
+                    if model.model[schema].is_classifier:
+                        est = model.model[schema].model.predict_proba([eval])[0]
+                        # if len(est) > 1: est = est[1]
+                        # else: est = est[0]
+                    else:
+                        est = model.model[schema].model.predict([eval])[0]
+                    print(" --- ", est)
+
+
+
+                if False:
+                    with bz2.BZ2File(all_operators_filename, "r") as actions:
+                    # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+                        for action in actions:
+                            action = action.decode("utf-8")
+                            saction = action.strip()
+                            if saction[-1] != ")":
+                                print("TRUNC", saction)
+                                continue
+                            schema, arguments = action.split("(")
+
+                            
+                            
+                            arguments = list(map(lambda x: x.strip(), arguments.strip()[:-1].split(",")))
+                        
+                            is_in_plan = 1 if  tuple([schema] + arguments) in plan else 0
+                        
+                            eval = re.evaluate(schema, arguments)
+                            print( ",".join(map (str, [schema] + eval + [is_in_plan])) )
+
+                            # Now run result with the model
+                            if model.model[schema].is_classifier:
+                                est = model.model[schema].model.predict_proba([eval])
+                            else:
+                                est = model.model[schema].model.predict([eval])
+                            print(" --- ", est)
 
 
 

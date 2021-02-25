@@ -31,10 +31,19 @@ class FreeVariableConstraint:
                 for arg in self.free_variables:
                         domains[arg] = set()
                         
+                # print("Compliant", self.compliant_values)
                 for values in self.compliant_values:
+                        # print("Values", values)
+                        # print("free_variables", self.free_variables)
                         for i, arg in enumerate(self.free_variables):
+                                # print(i, arg, self.action_arguments, len(self.action_arguments))
+                                # print(values[len(self.action_arguments):])
+                                # TODO: bug?
+                                if i >= len(values[len(self.action_arguments):]):
+                                        return domains
+                                # print(values[len(self.action_arguments):][i])
                                 domains[arg].add (values[len(self.action_arguments):][i])
-                
+                # print("Domains", domains)
                 return domains
 
         def update(self, free_variable_domains, action_argument_domains):
@@ -144,6 +153,7 @@ class Constraint:
                 return False        
 
         def evaluate(self, arguments):
+                # print("ARG", arguments, self.action_arguments, self.compliant_values)
                 values = tuple(map(lambda x : arguments[x],  self.action_arguments))
                 return values in self.compliant_values
                 
@@ -197,7 +207,7 @@ def get_free_variable_domains (constraints):
 
 class RuleEval:
     def __init__(self, rule_text, task):
-        #print("Loading: " + rule_text)
+        # print("Loading: " + rule_text)
         self.text = rule_text.replace('\n','')
         head, body = rule_text.split(":-")
         self.action_schema, action_arguments = head.split(" (")
@@ -206,6 +216,7 @@ class RuleEval:
         action_arguments = action_arguments.replace(")", "").replace("\n", "").replace(".", "").replace(" ", "").split(",")
 
         for rule in body.split(";"):
+        #     print("Processing: " + rule)
             rule_type, rule = rule.split(":")
             rule_type = rule_type.strip()
 
@@ -235,7 +246,10 @@ class RuleEval:
                 self.constraints.append(Constraint(action_arguments_rule, compliant_values))
             else:
                 pos = tuple(filter(lambda i : arguments[i] in action_arguments, range(len(arguments)))) + tuple(filter(lambda i : arguments[i] not in action_arguments, range(len(arguments))))
-                compliant_values = map(lambda x : tuple ([x[i] for i in pos]), compliant_values)
+                # print("POS", pos, compliant_values)
+                # for xx in map(lambda x : tuple ([x[i] for i in pos]), compliant_values):
+                        # print(xx)
+                compliant_values = list(map(lambda x : tuple ([x[i] for i in pos]), compliant_values))
                 self.constraints.append(FreeVariableConstraint(action_arguments_rule, free_variables, compliant_values))
 
         self.set_domain()
@@ -332,6 +346,7 @@ class RuleEval:
                 #for fv_values in itertools.product(*[valueset for x, valueset in self.free_variable_domains.items()]):
                 return 0
         else:
+                # print("RULE", self.text, self.constraints)
                 for c in self.constraints:
                         if not c.evaluate(arguments):
                                 return 0

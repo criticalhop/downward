@@ -4,6 +4,7 @@
 from sys import exit 
 import pickle
 import os.path
+import random
 
 from subdominization.rule_evaluator import RulesEvaluator
 from subdominization.learn import LearnRules
@@ -48,7 +49,20 @@ class TrainedModel():
         if (self.model[action.predicate.name].is_classifier):
             # the returned list has only one entry (estimates for the input action), 
             # of which the second entry is the probability that the action is in the plan (class 1)
-            estimate = self.model[action.predicate.name].model.predict_proba([self.ruleEvaluator.evaluate(action)])[0][1]
+            try:
+                raw_estimate = self.model[action.predicate.name].model.predict_proba([self.ruleEvaluator.evaluate(action)])[0]
+                estimate = raw_estimate[1]
+                print(action.predicate.name, raw_estimate)
+            except IndexError:
+                print(action.predicate.name)
+                if "goal" in action.predicate.name:
+                    estimate = 1.0
+                else:
+                    estimate = raw_estimate
+            if estimate > 0.5 or estimate == 0:
+                print(action.predicate.name, estimate)
+            if estimate == 0.5:  # most likely is a random classifier??
+                estimate = random.randint(0, 50)/100.0
         else:
             estimate = self.model[action.predicate.name].model.predict([self.ruleEvaluator.evaluate(action)])[0]
 
