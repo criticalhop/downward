@@ -140,6 +140,7 @@ if __name__ == "__main__":
             task_pddl = parse_pddl_file("task", task_filename)
 
             all_operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
+            all_operators_filename_nobz = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators")
             
             task = parsing_functions.parse_task(domain_pddl, task_pddl)
         
@@ -151,8 +152,16 @@ if __name__ == "__main__":
                 plan = set(map (lambda x : tuple(x.replace("\n", "").replace(")", "").replace("(", "").split(" ")), plan_file.readlines()))
                 skip_schemas_training = [schema for schema, examples in training_lines.items() if len(examples) >= options.max_training_examples]
                 skip_schemas_testing = [schema for schema, examples in testing_lines.items() if len(examples) >= options.max_training_examples]
-                with bz2.BZ2File(all_operators_filename, "r") as actions:
+
+                actions = None
+                try:
+                    actions = bz2.BZ2File(all_operators_filename, "r") 
+                except:
+                    actions = open(all_operators_filename_nobz, "r") 
+
+                # with bz2.BZ2File(all_operators_filename, "r") as actions:
                 # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
+                if actions:
                     for action in actions:
                         action = action.decode("utf-8")
                         saction = action.strip()
