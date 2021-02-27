@@ -189,9 +189,14 @@ class LearnRules():
                 self.is_classifier = True
                 #print self.model.predict_proba(X_test)
             elif (modelType=='HCSVC'):
+                print("TRAINING HC")
                 dataset_positive = dataset[dataset.iloc[:, -1] > 0]
                 dataset_negative = dataset[dataset.iloc[:, -1] == 0]
-                dataset_negative_smpl = dataset_negative.sample(n=int(len(dataset_positive)*1.5))
+                sz = int(len(dataset_positive)*1.5)
+                if(sz >= len(dataset_negative)-10):
+                    dataset_negative_smpl = dataset_negative
+                else:
+                    dataset_negative_smpl = dataset_negative.sample(n=sz)
                 dataset_rb_merged = pd.concat([dataset_positive, dataset_negative_smpl])
                 dataset_rebalanced = dataset_rb_merged.sample(frac = 1)
                 X_train, y_train = dataset_rebalanced.iloc[:,:-1], list(dataset_rebalanced.iloc[:, -1])
