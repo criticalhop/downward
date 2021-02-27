@@ -72,11 +72,22 @@ if __name__ == "__main__":
             training_re.init_task(task, options.max_training_examples)
 
             operators_filename = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators.bz2")
-            print("Processing", operators_filename)
+            operators_filename_nobz = '{}/{}/{}'.format(options.runs_folder, task_run, "all_operators")
 
-            with bz2.BZ2File(operators_filename, "r") as actions:
+            actionf = None
+            try:
+                actionf = bz2.BZ2File(operators_filename, "rb")
+            except:
+                try:
+                    actionf = open(operators_filename, "rb")
+                except:
+                    pass
+
+            #with bz2.BZ2File(operators_filename, "r") as actions:
+            if actionf:
+                print("Processing", operators_filename)
                 # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
-                for action in actions:
+                for action in actionf:
                     # print("ACTION", action)
                     saction = action.strip().decode("UTF-8")
                     if saction[-1] != ")":
