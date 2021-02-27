@@ -196,6 +196,7 @@ class LearnRules():
                 dataset_rebalanced = dataset_rb_merged.sample(frac = 1)
                 X_train, y_train = dataset_rebalanced.iloc[:,:-1], list(dataset_rebalanced.iloc[:, -1])
                 testSize = 1 - 7000.0/len(y_train)
+                if testSize < 0: testSize = 0.0
                 X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=testSize, random_state=None)
                 scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
                 X_std = scaler.fit_transform(X_train)
