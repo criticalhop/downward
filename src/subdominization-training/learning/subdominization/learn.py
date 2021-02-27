@@ -188,6 +188,21 @@ class LearnRules():
                 self.model =clf.fit(X_std, y)
                 self.is_classifier = True
                 #print self.model.predict_proba(X_test)
+            elif (modelType=='HCSVC'):
+                dataset_positive = dataset[dataset.iloc[:, -1] > 0]
+                dataset_negative = dataset[dataset.iloc[:, -1] == 0]
+                dataset_negative_smpl = dataset_negative.sample(n=int(len(dataset_positive)*1.5))
+                dataset_rb_merged = pd.concat([dataset_positive, dataset_negative_smpl])
+                dataset_rebalanced = dataset_rb_merged.sample(frac = 1)
+                X_train, y_train = dataset_rebalanced.iloc[:,:-1], list(dataset_rebalanced.iloc[:, -1])
+                testSize = 1 - 7000.0/len(y_train)
+                X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=testSize, random_state=None)
+                scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
+                X_std = scaler.fit_transform(X_train)
+                clf = SVC(probability=True, class_weight='balanced')
+                self.model = clf.fit(X_std, y_train)
+                #print self.model.predict_proba(X_test)
+                self.is_classifier = True
             elif (modelType=='SVC'):
                 clf = SVC(probability=True, class_weight='balanced' if self.isBalanced else None)
                 self.model = clf.fit(X_std, y)
