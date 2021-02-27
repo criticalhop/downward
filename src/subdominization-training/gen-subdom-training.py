@@ -155,9 +155,9 @@ if __name__ == "__main__":
 
                 actions = None
                 try:
-                    actions = bz2.BZ2File(all_operators_filename, "r") 
+                    actions = bz2.BZ2File(all_operators_filename, "rb") 
                 except:
-                    actions = open(all_operators_filename_nobz, "r") 
+                    actions = open(all_operators_filename_nobz, "rb") 
 
                 # with bz2.BZ2File(all_operators_filename, "r") as actions:
                 # relaxed_reachable, atoms, actions, axioms, _ = instantiate.explore(task)
