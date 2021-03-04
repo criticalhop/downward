@@ -205,14 +205,19 @@ class LearnRules():
                 print("TRAINING HCRF")
                 dataset_positive = dataset[dataset.iloc[:, -1] > 0]
                 dataset_negative = dataset[dataset.iloc[:, -1] == 0]
+                del dataset
                 sz = int(len(dataset_positive)*0.6)
                 if(sz >= len(dataset_negative)-10):
                     dataset_negative_smpl = dataset_negative
                 else:
                     dataset_negative_smpl = dataset_negative.sample(n=sz)
                 dataset_rb_merged = pd.concat([dataset_positive, dataset_negative_smpl])
+                del dataset_negative
+                del dataset_positive
                 dataset_rebalanced = dataset_rb_merged.sample(frac = 1)
+                del dataset_rb_merged
                 X_train, y_train = dataset_rebalanced.iloc[:,:-1], list(dataset_rebalanced.iloc[:, -1])
+                del dataset_rebalanced
                 testSize = 1 - 25000.0/len(y_train)
                 if testSize > 0:
                     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=testSize, random_state=None)
