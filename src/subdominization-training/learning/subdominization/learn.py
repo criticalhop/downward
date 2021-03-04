@@ -6,8 +6,16 @@ import numpy as np
 import pandas as pd
 
 import sklearn
-import autosklearn.classification
+#import autosklearn.classification
 import autosklearn.metrics
+
+from sklearn import datasets
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import LinearSVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (brier_score_loss, precision_score, recall_score,
+                                     f1_score)
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 
 from sklearn.pipeline import make_pipeline
 import matplotlib.pyplot as plt
@@ -17,6 +25,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
+from sklearn.metrics import average_precision_score
 from sklearn.svm import SVC
 from sklearn.svm import SVR
 from pylab import rcParams
@@ -92,29 +101,33 @@ class LearnRules():
         self.is_empty = True
         
         if (training_file !='') :
-            
-            dataset = helpers.get_dataset_from_csv(training_file, not remove_duplicate_features, take_max_for_duplicates)
-            
-            if (dataset is None):
-                return
+            if os.stat(training_file).st_size == 0:
+                X_std = [0]
+                y = [0]
+            else:
                 
-            self.is_empty = False # we actually train the model
-            
-            # print dataset.shape
-            # separate in features an target
-            X, y = dataset.iloc[:,:-1], list(dataset.iloc[:, -1])
-    
-            # if we want to separate into train and test sets
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=testSize, random_state=0)
-    
-            X=X_train
-            y=y_train
-    
-            # Standarize features
-            scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
-    
-            X_std = scaler.fit_transform(X)
-            
+                dataset = helpers.get_dataset_from_csv(training_file, not remove_duplicate_features, take_max_for_duplicates)
+                
+                if (dataset is None):
+                    return
+                    
+                self.is_empty = False # we actually train the model
+                
+                # print dataset.shape
+                # separate in features an target
+                X, y = dataset.iloc[:,:-1], list(dataset.iloc[:, -1])
+        
+                # if we want to separate into train and test sets
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=testSize, random_state=0)
+        
+                X=X_train
+                y=y_train
+        
+                # Standarize features
+                scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
+        
+                X_std = scaler.fit_transform(X)
+                
             if max(y) == 0:
                 print(training_file, "was never used, returning zero classifier")
                 #negative = DummyClassifier(strategy="constant", constant=[1,0])
@@ -188,6 +201,86 @@ class LearnRules():
                 self.model =clf.fit(X_std, y)
                 self.is_classifier = True
                 #print self.model.predict_proba(X_test)
+            elif (modelType=='HCRF'):
+                print("TRAINING HCRF")
+                dataset_positive = dataset[dataset.iloc[:, -1] > 0]
+                dataset_negative = dataset[dataset.iloc[:, -1] == 0]
+                sz = int(len(dataset_positive)*0.6)
+                if(sz >= len(dataset_negative)-10):
+                    dataset_negative_smpl = dataset_negative
+                else:
+                    dataset_negative_smpl = dataset_negative.sample(n=sz)
+                dataset_rb_merged = pd.concat([dataset_positive, dataset_negative_smpl])
+                dataset_rebalanced = dataset_rb_merged.sample(frac = 1)
+                X_train, y_train = dataset_rebalanced.iloc[:,:-1], list(dataset_rebalanced.iloc[:, -1])
+                testSize = 1 - 25000.0/len(y_train)
+                if testSize > 0:
+                    X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=testSize, random_state=None)
+                from sklearn.ensemble import RandomForestClassifier
+                clf = RandomForestClassifier(
+                    n_estimators=1000, 
+                    max_depth=50, 
+                    n_jobs=-1,
+                    max_features=0.4,
+                    criterion='entropy',
+                    class_weight=None)
+                                
+                name = "RandomForest"
+                self.model = clf.fit(X_train, y_train)
+                #print self.model.predict_proba(X_test)
+                self.is_classifier = True
+
+                from sklearn.metrics import precision_recall_curve
+                from sklearn.metrics import plot_precision_recall_curve
+                import matplotlib.pyplot as plt
+                fig_index = 1
+
+                y_pred = clf.predict(X_test)
+                y_pred_nrb = clf.predict(X[:5000])
+                y_test_nrb = y[:5000]
+                try:
+                    rank = sum([x for x in list(y_test_nrb - y_pred_nrb) if x > 0])/len([x for x in list(y_test_nrb) if x > 0])
+                except ZeroDivisionError:
+                    rank = -1
+                try:
+                    miss = len([x for x in list(y_test_nrb - y_pred_nrb) if x < 0])/len([x for x in list(y_test_nrb) if x > 0])
+                except ZeroDivisionError:
+                    miss = -1
+                    
+                disp = plot_precision_recall_curve(clf, X_test, y_test)
+                average_precision = average_precision_score(y_test, y_pred)
+                disp.ax_.set_title('2-class Precision-Recall curve: '
+                           'AP={0:0.2f}'.format(average_precision))
+                print("Saving fig...")
+                plt.savefig(f"{training_file}-recall-{average_precision:.2f}-{rank:.4f}-{miss:.3f}.png")
+                fig = plt.figure(fig_index, figsize=(10, 10))
+                ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+                ax2 = plt.subplot2grid((3, 1), (2, 0))
+
+                ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+                prob_pos = clf.predict_proba(X_test)[:, 1]
+                clf_score = brier_score_loss(y_test, prob_pos, pos_label=max(y))
+                fraction_of_positives, mean_predicted_value = \
+                    calibration_curve(y_test, prob_pos, n_bins=10)
+
+                ax1.plot(mean_predicted_value, fraction_of_positives, "s-",
+                     label="%s (%1.3f)" % (name, clf_score))
+
+                ax2.hist(prob_pos, range=(0, 1), bins=10, label=name,
+                     histtype="step", lw=2)
+
+                ax1.set_ylabel("Fraction of positives")
+                ax1.set_ylim([-0.05, 1.05])
+                ax1.legend(loc="lower right")
+                ax1.set_title('Calibration plots  (reliability curve)')
+
+                ax2.set_xlabel("Mean predicted value")
+                ax2.set_ylabel("Count")
+                ax2.legend(loc="upper center", ncol=2)
+
+                plt.tight_layout()
+                print("Saving fig...")
+                plt.savefig(f"{training_file}-calib.png")
             elif (modelType=='HCSVC'):
                 print("TRAINING HC")
                 dataset_positive = dataset[dataset.iloc[:, -1] > 0]
@@ -206,9 +299,63 @@ class LearnRules():
                 scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
                 X_std = scaler.fit_transform(X_train)
                 clf = SVC(probability=True, class_weight='balanced')
+                name = "SVC"
                 self.model = clf.fit(X_std, y_train)
                 #print self.model.predict_proba(X_test)
                 self.is_classifier = True
+
+                from sklearn.metrics import precision_recall_curve
+                from sklearn.metrics import plot_precision_recall_curve
+                import matplotlib.pyplot as plt
+                fig_index = 1
+
+                y_pred = clf.predict(X_test)
+                y_pred_nrb = clf.predict(X[:5000])
+                y_test_nrb = y[:5000]
+                try:
+                    rank = sum([x for x in list(y_test_nrb - y_pred_nrb) if x > 0])/len([x for x in list(y_test_nrb) if x > 0])
+                except ZeroDivisionError:
+                    rank = -1
+                try:
+                    miss = len([x for x in list(y_test_nrb - y_pred_nrb) if x < 0])/len([x for x in list(y_test_nrb) if x > 0])
+                except ZeroDivisionError:
+                    miss = -1
+                    
+                disp = plot_precision_recall_curve(clf, X_test, y_test)
+                average_precision = average_precision_score(y_test, y_pred)
+                disp.ax_.set_title('2-class Precision-Recall curve: '
+                           'AP={0:0.2f}'.format(average_precision))
+                print("Saving fig...")
+                plt.savefig(f"{training_file}-recall-{average_precision:.2f}-{rank:.4f}-{miss:.3f}.png")
+                fig = plt.figure(fig_index, figsize=(10, 10))
+                ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+                ax2 = plt.subplot2grid((3, 1), (2, 0))
+
+                ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+                prob_pos = clf.predict_proba(X_test)[:, 1]
+                clf_score = brier_score_loss(y_test, prob_pos, pos_label=max(y))
+                fraction_of_positives, mean_predicted_value = \
+                    calibration_curve(y_test, prob_pos, n_bins=10)
+
+                ax1.plot(mean_predicted_value, fraction_of_positives, "s-",
+                     label="%s (%1.3f)" % (name, clf_score))
+
+                ax2.hist(prob_pos, range=(0, 1), bins=10, label=name,
+                     histtype="step", lw=2)
+
+                ax1.set_ylabel("Fraction of positives")
+                ax1.set_ylim([-0.05, 1.05])
+                ax1.legend(loc="lower right")
+                ax1.set_title('Calibration plots  (reliability curve)')
+
+                ax2.set_xlabel("Mean predicted value")
+                ax2.set_ylabel("Count")
+                ax2.legend(loc="upper center", ncol=2)
+
+                plt.tight_layout()
+                print("Saving fig...")
+                plt.savefig(f"{training_file}-calib.png")
+
             elif (modelType=='SVC'):
                 clf = SVC(probability=True, class_weight='balanced' if self.isBalanced else None)
                 self.model = clf.fit(X_std, y)
