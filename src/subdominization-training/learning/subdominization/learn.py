@@ -201,11 +201,108 @@ class LearnRules():
                 self.model =clf.fit(X_std, y)
                 self.is_classifier = True
                 #print self.model.predict_proba(X_test)
+            elif (modelType=='HCRFAST'):
+                print("TRAINING HCRFAST")
+                dataset_positive = dataset[dataset.iloc[:, -1] > 0]
+                dataset_negative = dataset[dataset.iloc[:, -1] == 0]
+                del dataset
+                del X
+                del y
+                del X_train
+                del y_train
+                del X_test
+                del y_test
+                sz = int(len(dataset_positive)*0.6)
+                if(sz >= len(dataset_negative)-10):
+                    dataset_negative_smpl = dataset_negative
+                else:
+                    dataset_negative_smpl = dataset_negative.sample(n=sz)
+                dataset_rb_merged = pd.concat([dataset_positive, dataset_negative_smpl])
+                del dataset_negative
+                del dataset_positive
+                dataset_rebalanced = dataset_rb_merged.sample(frac = 1)
+                del dataset_rb_merged
+                X_train, y_train = dataset_rebalanced.iloc[:,:-1], list(dataset_rebalanced.iloc[:, -1])
+                del dataset_rebalanced
+                testSize = 1 - 50000.0/len(y_train)
+                if testSize > 0:
+                    X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=testSize, random_state=None)
+                from sklearn.ensemble import RandomForestClassifier
+                clf = RandomForestClassifier(
+                    n_estimators=30, 
+                    max_depth=20, 
+                    n_jobs=-1,
+                    max_features=0.8,
+                    criterion='gini',
+                    class_weight=None)
+                                
+                name = "RandomForest"
+                self.model = clf.fit(X_train, y_train)
+                #print self.model.predict_proba(X_test)
+                self.is_classifier = True
+
+                from sklearn.metrics import precision_recall_curve
+                from sklearn.metrics import plot_precision_recall_curve
+                import matplotlib.pyplot as plt
+                fig_index = 1
+
+                y_pred = clf.predict(X_test)
+                y_pred_nrb = clf.predict(X[:5000])
+                y_test_nrb = y[:5000]
+                try:
+                    rank = sum([x for x in list(y_test_nrb - y_pred_nrb) if x > 0])/len([x for x in list(y_test_nrb) if x > 0])
+                except ZeroDivisionError:
+                    rank = -1
+                try:
+                    miss = len([x for x in list(y_test_nrb - y_pred_nrb) if x < 0])/len([x for x in list(y_test_nrb) if x > 0])
+                except ZeroDivisionError:
+                    miss = -1
+                    
+                disp = plot_precision_recall_curve(clf, X_test, y_test)
+                average_precision = average_precision_score(y_test, y_pred)
+                disp.ax_.set_title('2-class Precision-Recall curve: '
+                           'AP={0:0.2f}'.format(average_precision))
+                print("Saving fig...")
+                plt.savefig(f"{training_file}-recall-{average_precision:.2f}-{rank:.4f}-{miss:.3f}.png")
+                fig = plt.figure(fig_index, figsize=(10, 10))
+                ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+                ax2 = plt.subplot2grid((3, 1), (2, 0))
+
+                ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+                prob_pos = clf.predict_proba(X_test)[:, 1]
+                clf_score = brier_score_loss(y_test, prob_pos, pos_label=max(y))
+                fraction_of_positives, mean_predicted_value = \
+                    calibration_curve(y_test, prob_pos, n_bins=10)
+
+                ax1.plot(mean_predicted_value, fraction_of_positives, "s-",
+                     label="%s (%1.3f)" % (name, clf_score))
+
+                ax2.hist(prob_pos, range=(0, 1), bins=10, label=name,
+                     histtype="step", lw=2)
+
+                ax1.set_ylabel("Fraction of positives")
+                ax1.set_ylim([-0.05, 1.05])
+                ax1.legend(loc="lower right")
+                ax1.set_title('Calibration plots  (reliability curve)')
+
+                ax2.set_xlabel("Mean predicted value")
+                ax2.set_ylabel("Count")
+                ax2.legend(loc="upper center", ncol=2)
+
+                plt.tight_layout()
+                print("Saving fig...")
+                plt.savefig(f"{training_file}-calib.png")
             elif (modelType=='HCRF'):
                 print("TRAINING HCRF")
                 dataset_positive = dataset[dataset.iloc[:, -1] > 0]
                 dataset_negative = dataset[dataset.iloc[:, -1] == 0]
                 del dataset
+                del X
+                del y
+                del X_train
+                del y_train
+                del X_test
+                del y_test
                 sz = int(len(dataset_positive)*0.6)
                 if(sz >= len(dataset_negative)-10):
                     dataset_negative_smpl = dataset_negative
