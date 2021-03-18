@@ -18,7 +18,7 @@ for l in fd:
             hint_skip -= 1
         else:
             continue
-    new_file_lines.append(l)
+    new_file_lines.append(l.rstrip())
 
 open(sys.argv[3], "w+").write("\n".join(new_file_lines))
 

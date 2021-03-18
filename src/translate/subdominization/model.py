@@ -10,8 +10,29 @@ from subdominization.rule_evaluator import RulesEvaluator
 from subdominization.learn import LearnRules
 
 from numpy import std
+from compiledtrees.compiled import CompiledClassifierPredictor
+from sklearn.dummy import DummyClassifier
 
 
+class FastModel:
+    def __init__(self, sofile):
+        self.is_classifier = True
+        self.model = CompiledClassifierPredictor(sofile)
+
+
+class DummyModel:
+    def __init__(self, value):
+        self.value = value
+    def predict_proba(self, X):
+        return self.value
+
+class FastDummyModel:
+    def __init__(self, value):
+        self.is_classifier = True
+        self.model = DummyModel(value)
+        self.value = value
+    def predict_proba(self, X):
+        return [0, self.value]
 
 class TrainedModel():
     def __init__(self, modelFolder, task):
@@ -22,10 +43,22 @@ class TrainedModel():
         found_model = False
         for file in os.listdir(modelFolder):
             if (os.path.isfile(os.path.join(modelFolder, file))):
+                if (file.endswith(".so")): continue
                 if (file.endswith(".model")):
-                    with open(os.path.join(modelFolder, file), "rb") as modelFile:
-                        found_model = True
-                        self.model[file[:-6]] = pickle.load(modelFile)
+                    found_model = True
+                    if (os.path.isfile(os.path.join(modelFolder, file+".so"))):
+                        self.model[file[:-6]] = FastModel(os.path.join(modelFolder, file+".so"))
+                    else:
+                        with open(os.path.join(modelFolder, file), "rb") as modelFile:
+                            self.model[file[:-6]] = pickle.load(modelFile)
+                            self.model[file[:-6]].model.n_jobs = 1
+                            if not isinstance(self.model[file[:-6]].model, DummyClassifier):
+                                self.model[file[:-6]].model_orig = self.model[file[:-6]].model
+                                self.model[file[:-6]].model = CompiledClassifierPredictor(self.model[file[:-6]].model)
+                                self.model[file[:-6]].model.save(os.path.join(modelFolder, file+".so"))
+                            else:
+                                self.model[file[:-6]].model = FastDummyModel(self.model[file[:-6]].model.constant)
+
                 elif (file == "relevant_rules"):
                     rules = []
                     with open(os.path.join(modelFolder, file), "r") as rulesFile:
@@ -50,19 +83,24 @@ class TrainedModel():
             # the returned list has only one entry (estimates for the input action), 
             # of which the second entry is the probability that the action is in the plan (class 1)
             try:
-                raw_estimate = self.model[action.predicate.name].model.predict_proba([self.ruleEvaluator.evaluate(action)])[0]
-                estimate = raw_estimate[1]
-                print(action.predicate.name, raw_estimate)
+                # raw_estimate = self.model[action.predicate.name].model.predict_proba([self.ruleEvaluator.evaluate(action)])[0]
+                # raw_estimate_orig = self.model[action.predicate.name].model_orig.predict_proba([self.ruleEvaluator.evaluate(action)])[0]
+                if isinstance(self.model[action.predicate.name].model, FastDummyModel):
+                    # estimate = self.model[action.predicate.name].model.predict_proba(None)
+                    estimate = self.model[action.predicate.name].model.value
+                else:
+                    raw_estimate = self.model[action.predicate.name].model.predict_proba(self.ruleEvaluator.evaluate(action))
+                    estimate = raw_estimate[1]
+                # estimate_orig = raw_estimate_orig[1]
+                # if round(estimate, 4) != round(estimate_orig, 4):
+                    # print("Fast model error!", estimate, estimate_orig)
+                #print(action.predicate.name, raw_estimate)
             except IndexError:
-                print(action.predicate.name)
+                #print(action.predicate.name)
                 if "goal" in action.predicate.name:
                     estimate = 1.0
                 else:
                     estimate = raw_estimate
-            if estimate > 0.5 or estimate == 0:
-                print(action.predicate.name, estimate)
-            if estimate == 0.5:  # most likely is a random classifier??
-                estimate = random.randint(0, 50)/100.0
         else:
             estimate = self.model[action.predicate.name].model.predict([self.ruleEvaluator.evaluate(action)])[0]
 
@@ -73,16 +111,16 @@ class TrainedModel():
             else:
                 return 1
         
-        if (not action.predicate.name in self.estimates_per_schema):
-            self.estimates_per_schema[action.predicate.name] = []
-        self.estimates_per_schema[action.predicate.name].append(estimate)
+        # if (not action.predicate.name in self.estimates_per_schema):
+            # self.estimates_per_schema[action.predicate.name] = []
+        # self.estimates_per_schema[action.predicate.name].append(estimate)
                
         return estimate
     
     def print_stats(self):
-        print("schema \t AVG \t STDDEV")
-        for key, estimates in self.estimates_per_schema.items():
-            print(key, sum(estimates) / len(estimates), std(estimates))
+        # print("schema \t AVG \t STDDEV")
+        # for key, estimates in self.estimates_per_schema.items():
+            # print(key, sum(estimates) / len(estimates), std(estimates))
         for schema in self.no_rule_schemas:
             print("no relevant rule for action schema", schema)
         for schema in self.values_off_for_schema:

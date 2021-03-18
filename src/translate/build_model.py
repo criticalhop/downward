@@ -348,13 +348,16 @@ def compute_model(prog, task = None):
                     print(relevant_atoms, auxiliary_atoms, i_pushes/(time.time()-ts), "pushes/s")
                     ts = time.time()
                     i_pushes = 0
-                if relevant_atoms % 1000 == 0 and termination_condition.goal_reached:
+                if (termination_condition.goal_reached and 
+                            ((relevant_atoms < 100000 and relevant_atoms % 10000 == 0) or 
+                             (relevant_atoms > 100000 and relevant_atoms % 100000 == 0)
+                            )):
                     if os.fork() == 0:
                         print(f"Dumping partial grounding with {relevant_atoms} atoms ...")
                         break
                 next_atom = queue.pop()  
-                if hasattr(next_atom, "_estimate"):
-                    print("TOP:", next_atom._estimate)
+                #if hasattr(next_atom, "_estimate"):
+                #    print("TOP:", next_atom._estimate)
                 pred = next_atom.predicate
                 if isinstance(pred, str) and "$" in pred:
                     auxiliary_atoms += 1
@@ -374,8 +377,11 @@ def compute_model(prog, task = None):
             else:
                 print(f"Interrupt! Goal unreachable from current world. Exit.")
                 sys.exit()
-
     queue.print_stats()
+    fd = open("./tot_est.num", "w+")
+    fd.write(f"{queue.action_queue.get_average_est()}, {queue.num_pushes}")
+    fd.flush()
+    fd.close()
     print("%d relevant atoms" % relevant_atoms)
     print("%d auxiliary atoms" % auxiliary_atoms)
     print("%d actions instantiated" % queue.get_number_popped_actions())

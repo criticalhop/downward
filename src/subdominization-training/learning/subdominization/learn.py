@@ -208,8 +208,6 @@ class LearnRules():
                 del dataset
                 del X
                 del y
-                del X_train
-                del y_train
                 del X_test
                 del y_test
                 sz = int(len(dataset_positive)*0.6)

@@ -124,6 +124,8 @@ class TrainedQueue(PriorityQueue):
         timer = timers.Timer()
         self.model = TrainedModel(options.trained_model_folder, task)
         self.loading_time = str(timer)
+        self.total_estimate = 0.0
+        self.num_estimates = 1
     def __bool__(self):
         return bool(self.queue)
     __nonzero__ = __bool__
@@ -143,9 +145,12 @@ class TrainedQueue(PriorityQueue):
 #             print(")")
     def push(self, action):
         estimate = self.model.get_estimate(action)
-        action._estimate = estimate  # FIXME: remove
+        #action._estimate = estimate  # FIXME: remove
         if (estimate == None):
-            estimate = randint(0, 100) / 100
+            estimate = randint(0, 50) / 100
+        self.total_estimate += estimate
+        self.num_estimates += 1
+        # assert type(estimate) == float, f"Type of est is {type(estimate)}"
         self.queue.push(action, 1 - estimate)
     def pop(self):
         action = self.queue.pop()
@@ -153,6 +158,8 @@ class TrainedQueue(PriorityQueue):
 #         heapq.heappush(self.sorted_closed, (result[0], self.pop_count, result[1]))
 #         self.pop_count += 1
         return action
+    def get_average_est(self):
+        return self.total_estimate/self.num_estimates
     
 class AlephQueue(TrainedQueue):
     def __init__(self, task):
